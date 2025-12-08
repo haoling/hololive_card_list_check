@@ -1,28 +1,27 @@
 // Version Management Configuration
 // このファイルはバージョンアップ時に更新されます
 
-const APP_VERSION = "4.14.0";
-const VERSION_DESCRIPTION = "Google Drive連携機能追加";
+const APP_VERSION = "4.14.1";
+const VERSION_DESCRIPTION = "リロードループ修正";
 
 // ✅ 各ページのバージョン情報を一元管理
 const PAGE_VERSIONS = {
-  "index.html": "4.14.0",
-  "binder_collection.html": "4.14.0",
-  "collection_binder.html": "4.14.0",
-  "card_list.html": "4.14.0",
-  "holoca_skill_page.html": "4.14.0",
-  "deck_builder.html": "4.14.0"
+  "index.html": "4.14.1",
+  "binder_collection.html": "4.14.1",
+  "collection_binder.html": "4.14.1",
+  "card_list.html": "4.14.1",
+  "holoca_skill_page.html": "4.14.1",
+  "deck_builder.html": "4.14.1"
 };
 
 // ✅ 更新内容の詳細情報
 const UPDATE_DETAILS = {
-  title: "v4.14.0",
-  description: "Google Drive連携機能追加",
+  title: "v4.14.1",
+  description: "リロードループ修正",
   changes: [
-    "Googleログインと連携してデータをGoogle Driveに自動保存する機能を追加",
-    "カード所持数・デッキデータ・バインダーコレクションなどが自動的に同期されます",
-    "書き込み中にページを離れようとすると警告が表示されます",
-    "設定画面からOAuthクライアントIDを設定することで利用可能"
+    "Google Driveデータ読み込み後の自動リロードを削除",
+    "代わりにリロードを促す通知バーを表示",
+    "ユーザーが手動でリロードを選択可能に"
   ]
 };
 
