@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
-<!-- Version: 4.12.0 -->
+<!-- Version: 4.14.4 -->
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
@@ -11,6 +11,7 @@
   <meta name="last-modified" content="Wed, 22 Jul 2025 13:00:00 GMT">
   <title>カード詳細検索ページ</title>
   <link rel="stylesheet" href="css/holoca_skill_page.css">
+  <link rel="stylesheet" href="css/google-drive-sync.css">
 </head>
 <body>
   <div class="container">
@@ -23,7 +24,7 @@
           <button onclick="navigateToPage('deck_builder.html')">⚔️ デッキ作成</button>
         </div>
                         <h1>ホロカスキル検索
-          <span style="font-size: 12px; color: #999; font-weight: normal;" id="versionDisplay">[v4.13.0]</span>
+          <span style="font-size: 12px; color: #999; font-weight: normal;" id="versionDisplay">[v4.14.4]</span>
         </h1>
         <button onclick="toggleDarkMode()" style="padding: 2px 6px; font-size: 14px; min-width: auto; width: 28px; height: 28px;">🌗</button>
       </div>
@@ -130,5 +131,13 @@
     <script src="js/holoca_skill_page.js"></script>
     <!-- オフライン状態管理 -->
     <script src="js/offline-utils.js"></script>
+    <!-- Google Drive同期 -->
+    <script src="js/google-drive-sync.js"></script>
+    <script>
+      // Google Drive同期UIを初期化
+      document.addEventListener('DOMContentLoaded', function() {
+        window.initializeGoogleDriveSync('.top-bar');
+      });
+    </script>
 </body>
 </html>
