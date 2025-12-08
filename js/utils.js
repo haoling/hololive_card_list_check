@@ -366,10 +366,373 @@ window.safeDomOperation = function(selector, operation, fallbackValue = null) {
   }
 };
 
+/**
+ * Google Drive同期関連のUI生成ヘルパー
+ */
+window.googleDriveUI = {
+  /**
+   * Google Drive同期UIを生成してヘッダーに追加
+   * @param {HTMLElement} headerElement - ヘッダー要素（挿入先）
+   */
+  createSyncUI: function(headerElement) {
+    if (!headerElement) {
+      window.warnLog('Google Drive UI: ヘッダー要素が見つかりません');
+      return;
+    }
+
+    // 既に追加済みの場合はスキップ
+    if (document.getElementById('google-drive-sync-container')) {
+      return;
+    }
+
+    const container = document.createElement('div');
+    container.id = 'google-drive-sync-container';
+    container.className = 'google-drive-sync-container';
+    container.innerHTML = `
+      <div class="sync-status" id="sync-status" title="Google Drive同期状態">
+        <span class="sync-icon">☁️</span>
+        <span class="sync-text">未接続</span>
+      </div>
+      <button id="google-signin-btn" class="google-signin-btn" title="Googleでログイン">
+        <svg class="google-icon" viewBox="0 0 24 24" width="18" height="18">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+        </svg>
+        <span class="signin-text">ログイン</span>
+      </button>
+      <button id="google-signout-btn" class="google-signout-btn" style="display: none;" title="ログアウト">
+        ログアウト
+      </button>
+      <button id="google-settings-btn" class="google-settings-btn" title="Google Drive設定">
+        ⚙️
+      </button>
+    `;
+
+    // ヘッダーの適切な位置に挿入
+    const darkModeBtn = headerElement.querySelector('.dark-toggle, #darkModeToggle, [onclick*="toggleDarkMode"]');
+    if (darkModeBtn) {
+      darkModeBtn.parentNode.insertBefore(container, darkModeBtn);
+    } else {
+      headerElement.appendChild(container);
+    }
+
+    this.setupEventListeners();
+    this.setupGoogleDriveEvents();
+  },
+
+  /**
+   * イベントリスナーを設定
+   */
+  setupEventListeners: function() {
+    const signinBtn = document.getElementById('google-signin-btn');
+    const signoutBtn = document.getElementById('google-signout-btn');
+    const settingsBtn = document.getElementById('google-settings-btn');
+
+    if (signinBtn) {
+      signinBtn.addEventListener('click', () => {
+        if (window.googleDriveSync && window.googleDriveSync.hasClientId()) {
+          window.googleDriveSync.signIn();
+        } else {
+          this.showSettingsModal();
+        }
+      });
+    }
+
+    if (signoutBtn) {
+      signoutBtn.addEventListener('click', () => {
+        if (window.googleDriveSync) {
+          window.googleDriveSync.signOut();
+        }
+      });
+    }
+
+    if (settingsBtn) {
+      settingsBtn.addEventListener('click', () => {
+        this.showSettingsModal();
+      });
+    }
+  },
+
+  /**
+   * Google Drive同期イベントを設定
+   */
+  setupGoogleDriveEvents: function() {
+    window.addEventListener('googleSignInChange', (e) => {
+      this.updateUIState(e.detail.signedIn);
+    });
+
+    window.addEventListener('googleSyncStatusChange', (e) => {
+      this.updateSyncStatus(e.detail.status);
+    });
+
+    window.addEventListener('googleSyncError', (e) => {
+      this.showError(e.detail.message);
+    });
+  },
+
+  /**
+   * UI状態を更新
+   */
+  updateUIState: function(signedIn) {
+    const signinBtn = document.getElementById('google-signin-btn');
+    const signoutBtn = document.getElementById('google-signout-btn');
+    const syncStatus = document.getElementById('sync-status');
+
+    if (signinBtn) signinBtn.style.display = signedIn ? 'none' : 'flex';
+    if (signoutBtn) signoutBtn.style.display = signedIn ? 'inline-block' : 'none';
+
+    if (syncStatus) {
+      if (signedIn) {
+        syncStatus.classList.add('connected');
+        syncStatus.querySelector('.sync-text').textContent = '接続中';
+      } else {
+        syncStatus.classList.remove('connected', 'saving', 'error');
+        syncStatus.querySelector('.sync-text').textContent = '未接続';
+      }
+    }
+  },
+
+  /**
+   * 同期状態を更新
+   */
+  updateSyncStatus: function(status) {
+    const syncStatus = document.getElementById('sync-status');
+    if (!syncStatus) return;
+
+    const syncText = syncStatus.querySelector('.sync-text');
+    syncStatus.classList.remove('saving', 'error', 'saved', 'loading');
+
+    switch (status) {
+      case 'saving':
+        syncStatus.classList.add('saving');
+        syncText.textContent = '保存中...';
+        break;
+      case 'saved':
+        syncStatus.classList.add('saved');
+        syncText.textContent = '保存完了';
+        break;
+      case 'loading':
+        syncStatus.classList.add('loading');
+        syncText.textContent = '読込中...';
+        break;
+      case 'error':
+        syncStatus.classList.add('error');
+        syncText.textContent = 'エラー';
+        break;
+      case 'idle':
+      default:
+        syncText.textContent = '同期済';
+        break;
+    }
+  },
+
+  /**
+   * エラーを表示
+   */
+  showError: function(message) {
+    console.error('[Google Drive]', message);
+    // シンプルなアラート表示（必要に応じてモーダルに変更可能）
+    if (message.includes('認証エラー') || message.includes('初期化エラー')) {
+      alert('Google Drive同期エラー: ' + message);
+    }
+  },
+
+  /**
+   * 設定モーダルを表示
+   */
+  showSettingsModal: function() {
+    // 既存のモーダルを削除
+    const existingModal = document.getElementById('google-drive-settings-modal');
+    if (existingModal) existingModal.remove();
+
+    const currentClientId = window.googleDriveSync ? window.googleDriveSync.getClientId() || '' : '';
+
+    const modal = document.createElement('div');
+    modal.id = 'google-drive-settings-modal';
+    modal.className = 'google-drive-modal-overlay';
+    modal.innerHTML = `
+      <div class="google-drive-modal">
+        <div class="google-drive-modal-header">
+          <h3>Google Drive 設定</h3>
+          <button class="modal-close-btn" id="close-settings-modal">×</button>
+        </div>
+        <div class="google-drive-modal-body">
+          <p class="settings-description">
+            Google Driveとデータを同期するには、Google Cloud ConsoleでOAuthクライアントIDを作成し、以下に入力してください。
+          </p>
+          <div class="settings-help">
+            <details>
+              <summary>設定手順を見る</summary>
+              <ol>
+                <li><a href="https://console.cloud.google.com/" target="_blank" rel="noopener">Google Cloud Console</a>にアクセス</li>
+                <li>新しいプロジェクトを作成（または既存のプロジェクトを選択）</li>
+                <li>「APIとサービス」→「OAuth同意画面」を設定</li>
+                <li>「認証情報」→「認証情報を作成」→「OAuthクライアントID」</li>
+                <li>アプリケーションの種類: 「ウェブアプリケーション」</li>
+                <li>承認済みJavaScriptオリジン: このサイトのURLを追加</li>
+                <li>作成されたクライアントIDをコピー</li>
+                <li>「APIとサービス」→「ライブラリ」→「Google Drive API」を有効化</li>
+              </ol>
+            </details>
+          </div>
+          <div class="settings-input-group">
+            <label for="google-client-id">OAuth クライアントID:</label>
+            <input type="text" id="google-client-id" placeholder="xxxx.apps.googleusercontent.com" value="${currentClientId}">
+          </div>
+          <div class="settings-actions">
+            <button id="save-client-id-btn" class="primary-btn">保存して初期化</button>
+            <button id="cancel-settings-btn" class="secondary-btn">キャンセル</button>
+          </div>
+          ${currentClientId ? `
+          <div class="settings-sync-actions">
+            <hr>
+            <h4>データ操作</h4>
+            <button id="manual-sync-btn" class="sync-action-btn">手動で同期</button>
+            <button id="reload-from-drive-btn" class="sync-action-btn warning">Driveから再読込（ローカル上書き）</button>
+          </div>
+          ` : ''}
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // イベントリスナー
+    document.getElementById('close-settings-modal').addEventListener('click', () => modal.remove());
+    document.getElementById('cancel-settings-btn').addEventListener('click', () => modal.remove());
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.remove();
+    });
+
+    document.getElementById('save-client-id-btn').addEventListener('click', async () => {
+      const clientId = document.getElementById('google-client-id').value.trim();
+      if (!clientId) {
+        alert('クライアントIDを入力してください');
+        return;
+      }
+
+      if (window.googleDriveSync) {
+        window.googleDriveSync.setClientId(clientId);
+        const success = await window.googleDriveSync.initialize();
+        if (success) {
+          alert('設定を保存しました。「ログイン」ボタンからGoogleにログインしてください。');
+          modal.remove();
+        } else {
+          alert('初期化に失敗しました。クライアントIDを確認してください。');
+        }
+      }
+    });
+
+    const manualSyncBtn = document.getElementById('manual-sync-btn');
+    if (manualSyncBtn) {
+      manualSyncBtn.addEventListener('click', async () => {
+        if (window.googleDriveSync) {
+          const success = await window.googleDriveSync.manualSync();
+          alert(success ? '同期が完了しました' : '同期に失敗しました');
+        }
+      });
+    }
+
+    const reloadBtn = document.getElementById('reload-from-drive-btn');
+    if (reloadBtn) {
+      reloadBtn.addEventListener('click', async () => {
+        if (confirm('Google Driveのデータでローカルデータを上書きします。よろしいですか？')) {
+          if (window.googleDriveSync) {
+            await window.googleDriveSync.reloadFromDrive();
+          }
+        }
+      });
+    }
+  }
+};
+
+/**
+ * Google APIスクリプトを動的に読み込み
+ */
+window.loadGoogleAPIs = function() {
+  return new Promise((resolve, reject) => {
+    // 既に読み込み済みの場合
+    if (typeof gapi !== 'undefined' && typeof google !== 'undefined' && google.accounts) {
+      resolve();
+      return;
+    }
+
+    let gapiLoaded = false;
+    let gsiLoaded = false;
+
+    const checkBothLoaded = () => {
+      if (gapiLoaded && gsiLoaded) {
+        resolve();
+      }
+    };
+
+    // Google API Client Library
+    if (typeof gapi === 'undefined') {
+      const gapiScript = document.createElement('script');
+      gapiScript.src = 'https://apis.google.com/js/api.js';
+      gapiScript.async = true;
+      gapiScript.defer = true;
+      gapiScript.onload = () => {
+        gapiLoaded = true;
+        checkBothLoaded();
+      };
+      gapiScript.onerror = () => reject(new Error('Failed to load Google API'));
+      document.head.appendChild(gapiScript);
+    } else {
+      gapiLoaded = true;
+    }
+
+    // Google Identity Services
+    if (typeof google === 'undefined' || !google.accounts) {
+      const gsiScript = document.createElement('script');
+      gsiScript.src = 'https://accounts.google.com/gsi/client';
+      gsiScript.async = true;
+      gsiScript.defer = true;
+      gsiScript.onload = () => {
+        gsiLoaded = true;
+        checkBothLoaded();
+      };
+      gsiScript.onerror = () => reject(new Error('Failed to load Google Identity Services'));
+      document.head.appendChild(gsiScript);
+    } else {
+      gsiLoaded = true;
+    }
+
+    checkBothLoaded();
+  });
+};
+
+/**
+ * Google Drive同期の初期化（ページ読み込み時に呼び出し）
+ */
+window.initializeGoogleDriveSync = async function(headerSelector = '.header, header, .site-header') {
+  try {
+    // Google APIスクリプトを読み込み
+    await window.loadGoogleAPIs();
+
+    // UIを生成
+    const header = document.querySelector(headerSelector);
+    if (header) {
+      window.googleDriveUI.createSyncUI(header);
+    }
+
+    // クライアントIDが設定されていれば初期化
+    if (window.googleDriveSync && window.googleDriveSync.hasClientId()) {
+      await window.googleDriveSync.initialize();
+    }
+
+    window.debugLog('Google Drive同期初期化完了');
+  } catch (error) {
+    window.errorLog('Google Drive同期初期化エラー:', error);
+  }
+};
+
 // 初期化処理
 document.addEventListener('DOMContentLoaded', function() {
   // ダークモードの初期化
   window.initializeDarkMode();
-  
+
   window.debugLog('共通ユーティリティ初期化完了');
 });

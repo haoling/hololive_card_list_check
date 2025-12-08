@@ -9,12 +9,13 @@
   <meta http-equiv="Expires" content="0">
   <title>ホロライブカード バインダーコレクション</title>
   <link rel="stylesheet" href="css/binder_collection.css">
+  <link rel="stylesheet" href="css/google-drive-sync.css">
 </head>
 <body>
   <div class="header">
     <div class="header-content">
       <h1>📚 バインダーコレクション
-  <span style="font-size: 12px; color: #999; font-weight: normal; margin-left: 10px;" id="versionDisplay">[v4.13.0]</span>
+  <span style="font-size: 12px; color: #999; font-weight: normal; margin-left: 10px;" id="versionDisplay">[v4.14.0]</span>
       </h1>
       <div class="header-controls">
         <button class="control-btn" onclick="exportBinderCollection()">📤 エクスポート</button>
@@ -974,5 +975,14 @@
   <script src="js/binder_collection.js"></script>
   <!-- オフライン状態管理 -->
   <script src="js/offline-utils.js"></script>
+  <!-- Google Drive同期 -->
+  <script src="js/utils.js"></script>
+  <script src="js/google-drive-sync.js"></script>
+  <script>
+    // Google Drive同期UIを初期化
+    document.addEventListener('DOMContentLoaded', function() {
+      window.initializeGoogleDriveSync('.header');
+    });
+  </script>
 </body>
 </html>

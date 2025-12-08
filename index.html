@@ -8,6 +8,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>ホロライブカードゲーム管理ツール</title>
+  <link rel="stylesheet" href="css/google-drive-sync.css">
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -280,7 +281,7 @@
 <body>
   <div class="container">
     <h1>ホロライブカードゲーム<br>管理ツール
-  <span style="font-size: 0.4em; color: #999; display: block; margin-top: 5px; font-weight: normal;" id="versionDisplay">[v4.13.0]</span>
+  <span style="font-size: 0.4em; color: #999; display: block; margin-top: 5px; font-weight: normal;" id="versionDisplay">[v4.14.0]</span>
     </h1>
 
     <div class="menu-grid">
@@ -1257,5 +1258,27 @@
   </script>
   <!-- オフライン状態管理 -->
   <script src="js/offline-utils.js"></script>
+  <!-- 共通ユーティリティ -->
+  <script src="js/utils.js"></script>
+  <!-- Google Drive同期 -->
+  <script src="js/google-drive-sync.js"></script>
+  <script>
+    // Google Drive同期UIを初期化
+    document.addEventListener('DOMContentLoaded', function() {
+      // コンテナのヘッダー部分にGoogle Drive UIを追加
+      const container = document.querySelector('.container');
+      if (container) {
+        // タイトルの直後にUIを挿入するためのヘッダー要素を作成
+        const h1 = container.querySelector('h1');
+        if (h1) {
+          const driveHeader = document.createElement('div');
+          driveHeader.className = 'google-drive-header';
+          driveHeader.style.cssText = 'display: flex; justify-content: center; align-items: center; margin-bottom: 20px;';
+          h1.parentNode.insertBefore(driveHeader, h1.nextSibling);
+          window.initializeGoogleDriveSync('.google-drive-header');
+        }
+      }
+    });
+  </script>
 </body>
 </html>
