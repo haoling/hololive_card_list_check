@@ -67,7 +67,7 @@
     <!-- 固定対象：検索・ソート・フィルターのみ -->
     <div class="sticky-controls">
       <div class="top-controls-row">
-        <input type="text" id="nameSearch" placeholder="カード名検索" oninput="saveFilterState(); renderTable()" />
+        <input type="text" id="nameSearch" placeholder="カード名・ID検索" oninput="saveFilterState(); renderTable()" />
         <select id="sortMethod" onchange="saveFilterState(); renderTable()">
           <option value="release" selected>発売日順</option>
           <option value="id">カード番号順</option>
