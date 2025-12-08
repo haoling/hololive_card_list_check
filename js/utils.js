@@ -532,10 +532,11 @@ window.googleDriveUI = {
    * エラーを表示
    */
   showError: function(message) {
-    console.error('[Google Drive]', message);
+    const errorMsg = message || '不明なエラーが発生しました';
+    console.error('[Google Drive]', errorMsg);
     // シンプルなアラート表示（必要に応じてモーダルに変更可能）
-    if (message.includes('認証エラー') || message.includes('初期化エラー')) {
-      alert('Google Drive同期エラー: ' + message);
+    if (errorMsg.includes('認証エラー') || errorMsg.includes('初期化エラー')) {
+      alert('Google Drive同期エラー: ' + errorMsg);
     }
   },
 

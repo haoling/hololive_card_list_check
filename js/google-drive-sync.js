@@ -63,7 +63,10 @@
     async initialize() {
       const clientId = localStorage.getItem(GOOGLE_CLIENT_ID_KEY);
       if (!clientId) {
-        console.log('Google Client IDが設定されていません');
+        // クライアントIDが設定されていない場合、古いキャッシュもクリア
+        sessionStorage.removeItem('gapi_token');
+        localStorage.removeItem('driveFileId');
+        console.log('[GoogleDriveSync] クライアントIDが設定されていません。設定ボタンから設定してください。');
         return false;
       }
 
@@ -112,7 +115,7 @@
 
         return true;
       } catch (error) {
-        this.handleError('初期化エラー: ' + error.message);
+        this.handleError('初期化エラー: ' + this.extractErrorMessage(error));
         return false;
       }
     }
@@ -256,13 +259,13 @@
         return null;
       } catch (error) {
         // ファイルIDが無効な場合はキャッシュをクリアして再試行
-        if (error.status === 404) {
+        if (error && error.status === 404) {
           localStorage.removeItem('driveFileId');
           driveFileId = null;
           this.notifySyncStatus('idle');
           return null;
         }
-        this.handleError('読み込みエラー: ' + error.message);
+        this.handleError('読み込みエラー: ' + this.extractErrorMessage(error));
         this.notifySyncStatus('error');
         return null;
       }
@@ -327,7 +330,7 @@
         return true;
       } catch (error) {
         isSaving = false;
-        this.handleError('保存エラー: ' + error.message);
+        this.handleError('保存エラー: ' + this.extractErrorMessage(error));
         this.notifySyncStatus('error');
         return false;
       }
@@ -505,12 +508,28 @@
      * エラー処理
      */
     handleError(message) {
-      console.error('[GoogleDriveSync]', message);
+      // エラーメッセージを安全に取得
+      const errorMessage = message || '不明なエラー';
+      console.error('[GoogleDriveSync]', errorMessage);
       if (typeof this.onError === 'function') {
-        this.onError(message);
+        this.onError(errorMessage);
       }
       // カスタムイベントも発火
-      window.dispatchEvent(new CustomEvent('googleSyncError', { detail: { message } }));
+      window.dispatchEvent(new CustomEvent('googleSyncError', { detail: { message: errorMessage } }));
+    }
+
+    /**
+     * エラーオブジェクトからメッセージを抽出
+     */
+    extractErrorMessage(error) {
+      if (!error) return '不明なエラー';
+      if (typeof error === 'string') return error;
+      if (error.message) return error.message;
+      if (error.result && error.result.error && error.result.error.message) {
+        return error.result.error.message;
+      }
+      if (error.status) return `HTTPエラー: ${error.status}`;
+      return JSON.stringify(error);
     }
 
     /**
