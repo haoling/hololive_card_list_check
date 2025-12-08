@@ -1,27 +1,26 @@
 // Version Management Configuration
 // このファイルはバージョンアップ時に更新されます
 
-const APP_VERSION = "4.14.1";
-const VERSION_DESCRIPTION = "リロードループ修正";
+const APP_VERSION = "4.14.2";
+const VERSION_DESCRIPTION = "デバイス間同期修正";
 
 // ✅ 各ページのバージョン情報を一元管理
 const PAGE_VERSIONS = {
-  "index.html": "4.14.1",
-  "binder_collection.html": "4.14.1",
-  "collection_binder.html": "4.14.1",
-  "card_list.html": "4.14.1",
-  "holoca_skill_page.html": "4.14.1",
-  "deck_builder.html": "4.14.1"
+  "index.html": "4.14.2",
+  "binder_collection.html": "4.14.2",
+  "collection_binder.html": "4.14.2",
+  "card_list.html": "4.14.2",
+  "holoca_skill_page.html": "4.14.2",
+  "deck_builder.html": "4.14.2"
 };
 
 // ✅ 更新内容の詳細情報
 const UPDATE_DETAILS = {
-  title: "v4.14.1",
-  description: "リロードループ修正",
+  title: "v4.14.2",
+  description: "デバイス間同期修正",
   changes: [
-    "Google Driveデータ読み込み後の自動リロードを削除",
-    "代わりにリロードを促す通知バーを表示",
-    "ユーザーが手動でリロードを選択可能に"
+    "ページリロード時にGoogle Driveから最新データを取得するよう修正",
+    "デバイス間でデータが同期されない問題を修正"
   ]
 };
 

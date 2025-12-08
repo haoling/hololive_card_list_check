@@ -211,13 +211,8 @@
     async loadFromDrive() {
       if (!isSignedIn) return null;
 
-      // リロード後の重複読み込みを防止
-      const alreadyLoaded = sessionStorage.getItem(RELOAD_FLAG_KEY);
-      if (alreadyLoaded === 'true') {
-        console.log('[GoogleDriveSync] 既にデータ読み込み済み。スキップします。');
-        this.notifySyncStatus('idle');
-        return null;
-      }
+      // リロードプロンプト表示をスキップするかどうか（データ読み込み自体はスキップしない）
+      const skipReloadPrompt = sessionStorage.getItem(RELOAD_FLAG_KEY) === 'true';
 
       try {
         isLoadingFromDrive = true;
@@ -267,14 +262,16 @@
           this.notifySyncStatus('idle');
           console.log('[GoogleDriveSync] Google Driveからデータを読み込みました');
 
-          // データがある場合、ユーザーに通知（自動リロードはループの原因になるため削除）
+          // データがある場合、ユーザーに通知（初回のみリロードプロンプトを表示）
           if (Object.keys(driveData).length > 0) {
-            // 読み込み済みフラグを設定
-            sessionStorage.setItem(RELOAD_FLAG_KEY, 'true');
             // イベントを発火してUIに通知
             window.dispatchEvent(new CustomEvent('googleDriveDataLoaded', { detail: { data: driveData } }));
-            // ユーザーにリロードを促すメッセージを表示
-            this.showReloadPrompt();
+
+            // 初回のみリロードプロンプトを表示（2回目以降はデータは読み込むが表示しない）
+            if (!skipReloadPrompt) {
+              sessionStorage.setItem(RELOAD_FLAG_KEY, 'true');
+              this.showReloadPrompt();
+            }
           }
           return driveData;
         }
