@@ -18,12 +18,10 @@
   // 保存対象のlocalStorageキーパターン
   const SYNC_KEY_PATTERNS = [
     /^count_/,           // カード所持数
-    /^viewMode$/,        // ビューモード
-    /^binderViewMode$/,  // バインダービューモード
     /^darkMode$/,        // ダークモード
     /^deckData$/,        // デッキデータ
     /^binderCollection$/ // バインダーコレクション
-    // filterState は除外（検索ボックス・フィルター状態はデバイスごとに保持）
+    // viewMode, binderViewMode, filterState は除外（デバイスごとに保持）
   ];
 
   // 除外するキー（キャッシュデータなど）
