@@ -751,7 +751,10 @@ function setViewMode(mode) {
       if (!matchOwned) return false;
 
       const match = {
-        name: !keyword || window.normalizeText(card.name).includes(keyword),
+        name: !keyword ||
+              window.normalizeText(card.name).includes(keyword) ||
+              window.normalizeText(card.id || '').includes(keyword) ||
+              window.normalizeText(card.number || '').includes(keyword),
         rarity: rarity.length === 0 || rarity.includes(card.rarity),
         color: color.length === 0 || color.includes(card.color),
         bloom: bloom.length === 0 || bloom.includes(card.bloom),
