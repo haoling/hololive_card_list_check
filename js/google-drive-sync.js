@@ -267,12 +267,14 @@
           this.notifySyncStatus('idle');
           console.log('[GoogleDriveSync] Google Driveからデータを読み込みました');
 
-          // ページをリロードして反映（データがある場合のみ）
+          // データがある場合、ユーザーに通知（自動リロードはループの原因になるため削除）
           if (Object.keys(driveData).length > 0) {
-            // リロード前にフラグを設定してループを防止
+            // 読み込み済みフラグを設定
             sessionStorage.setItem(RELOAD_FLAG_KEY, 'true');
-            console.log('[GoogleDriveSync] データを反映するためページをリロードします');
-            window.location.reload();
+            // イベントを発火してUIに通知
+            window.dispatchEvent(new CustomEvent('googleDriveDataLoaded', { detail: { data: driveData } }));
+            // ユーザーにリロードを促すメッセージを表示
+            this.showReloadPrompt();
           }
           return driveData;
         }
@@ -531,6 +533,72 @@
       }
       // カスタムイベントも発火
       window.dispatchEvent(new CustomEvent('googleSyncStatusChange', { detail: { status } }));
+    }
+
+    /**
+     * リロードを促すプロンプトを表示
+     */
+    showReloadPrompt() {
+      // 既存のプロンプトがあれば削除
+      const existing = document.getElementById('google-drive-reload-prompt');
+      if (existing) existing.remove();
+
+      const prompt = document.createElement('div');
+      prompt.id = 'google-drive-reload-prompt';
+      prompt.style.cssText = `
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #4CAF50;
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        z-index: 10001;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 14px;
+        max-width: 90%;
+      `;
+      prompt.innerHTML = `
+        <span>☁️ Google Driveからデータを読み込みました</span>
+        <button id="reload-now-btn" style="
+          background: white;
+          color: #4CAF50;
+          border: none;
+          padding: 6px 12px;
+          border-radius: 4px;
+          cursor: pointer;
+          font-weight: bold;
+        ">リロードして反映</button>
+        <button id="reload-later-btn" style="
+          background: transparent;
+          color: white;
+          border: 1px solid white;
+          padding: 6px 12px;
+          border-radius: 4px;
+          cursor: pointer;
+        ">後で</button>
+      `;
+
+      document.body.appendChild(prompt);
+
+      document.getElementById('reload-now-btn').addEventListener('click', () => {
+        window.location.reload();
+      });
+
+      document.getElementById('reload-later-btn').addEventListener('click', () => {
+        prompt.remove();
+      });
+
+      // 10秒後に自動で消す
+      setTimeout(() => {
+        if (prompt.parentNode) {
+          prompt.remove();
+        }
+      }, 10000);
     }
 
     /**
