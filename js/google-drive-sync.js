@@ -39,10 +39,14 @@
   let isInitialized = false;
   let isSignedIn = false;
   let isSaving = false;
+  let isLoadingFromDrive = false; // Driveからの読み込み中フラグ
   let saveQueue = [];
   let saveTimeout = null;
   let tokenClient = null;
   let driveFileId = null;
+
+  // セッションフラグのキー（リロードループ防止用）
+  const RELOAD_FLAG_KEY = 'googleDriveDataLoaded';
 
   // デバウンス設定（ミリ秒）
   const SAVE_DEBOUNCE_MS = 2000;
@@ -182,6 +186,8 @@
       isSignedIn = false;
       driveFileId = null;
       localStorage.removeItem('driveFileId');
+      // リロードフラグもクリア（次回ログイン時に再読み込みできるように）
+      sessionStorage.removeItem(RELOAD_FLAG_KEY);
       this.notifySignInChange(false);
     }
 
@@ -205,7 +211,16 @@
     async loadFromDrive() {
       if (!isSignedIn) return null;
 
+      // リロード後の重複読み込みを防止
+      const alreadyLoaded = sessionStorage.getItem(RELOAD_FLAG_KEY);
+      if (alreadyLoaded === 'true') {
+        console.log('[GoogleDriveSync] 既にデータ読み込み済み。スキップします。');
+        this.notifySyncStatus('idle');
+        return null;
+      }
+
       try {
+        isLoadingFromDrive = true;
         this.notifySyncStatus('loading');
 
         // ファイルIDをキャッシュから取得、なければ検索
@@ -228,8 +243,11 @@
 
         if (!driveFileId) {
           // ファイルが存在しない場合は現在のlocalStorageから新規作成
+          isLoadingFromDrive = false;
           this.notifySyncStatus('idle');
-          console.log('Google Driveにデータファイルがありません。ローカルデータを使用します。');
+          console.log('[GoogleDriveSync] Driveにデータファイルがありません。ローカルデータを使用します。');
+          // 読み込み済みフラグを設定（新規作成後はリロード不要）
+          sessionStorage.setItem(RELOAD_FLAG_KEY, 'true');
           await this.saveToDrive();
           return null;
         }
@@ -245,19 +263,25 @@
         // localStorageに反映
         if (driveData && typeof driveData === 'object') {
           this.applyDriveDataToLocalStorage(driveData);
+          isLoadingFromDrive = false;
           this.notifySyncStatus('idle');
-          console.log('Google Driveからデータを読み込みました');
+          console.log('[GoogleDriveSync] Google Driveからデータを読み込みました');
 
-          // ページをリロードして反映
+          // ページをリロードして反映（データがある場合のみ）
           if (Object.keys(driveData).length > 0) {
+            // リロード前にフラグを設定してループを防止
+            sessionStorage.setItem(RELOAD_FLAG_KEY, 'true');
+            console.log('[GoogleDriveSync] データを反映するためページをリロードします');
             window.location.reload();
           }
           return driveData;
         }
 
+        isLoadingFromDrive = false;
         this.notifySyncStatus('idle');
         return null;
       } catch (error) {
+        isLoadingFromDrive = false;
         // ファイルIDが無効な場合はキャッシュをクリアして再試行
         if (error && error.status === 404) {
           localStorage.removeItem('driveFileId');
@@ -460,6 +484,11 @@
      * デバウンスされた保存
      */
     debouncedSave() {
+      // Driveからの読み込み中は保存をスキップ（読み込んだデータを即座に書き戻さない）
+      if (isLoadingFromDrive) {
+        return;
+      }
+
       if (saveTimeout) {
         clearTimeout(saveTimeout);
       }
