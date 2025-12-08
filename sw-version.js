@@ -1,26 +1,26 @@
 // Version Management Configuration
 // このファイルはバージョンアップ時に更新されます
 
-const APP_VERSION = "4.14.4";
-const VERSION_DESCRIPTION = "フィルター状態を同期対象外に変更";
+const APP_VERSION = "4.14.5";
+const VERSION_DESCRIPTION = "viewModeを同期対象外に変更";
 
 // ✅ 各ページのバージョン情報を一元管理
 const PAGE_VERSIONS = {
-  "index.html": "4.14.4",
-  "binder_collection.html": "4.14.4",
-  "collection_binder.html": "4.14.4",
-  "card_list.html": "4.14.4",
-  "holoca_skill_page.html": "4.14.4",
-  "deck_builder.html": "4.14.4"
+  "index.html": "4.14.5",
+  "binder_collection.html": "4.14.5",
+  "collection_binder.html": "4.14.5",
+  "card_list.html": "4.14.5",
+  "holoca_skill_page.html": "4.14.5",
+  "deck_builder.html": "4.14.5"
 };
 
 // ✅ 更新内容の詳細情報
 const UPDATE_DETAILS = {
-  title: "v4.14.4",
-  description: "フィルター状態を同期対象外に変更",
+  title: "v4.14.5",
+  description: "viewModeを同期対象外に変更",
   changes: [
-    "検索ボックスの入力内容をGoogle Drive同期から除外",
-    "フィルター状態をGoogle Drive同期から除外",
+    "viewModeをGoogle Drive同期から除外",
+    "binderViewModeをGoogle Drive同期から除外",
     "これらの設定はデバイスごとに個別保持"
   ]
 };
