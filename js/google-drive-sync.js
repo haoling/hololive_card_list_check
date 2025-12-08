@@ -18,12 +18,12 @@
   // 保存対象のlocalStorageキーパターン
   const SYNC_KEY_PATTERNS = [
     /^count_/,           // カード所持数
-    /^filterState$/,     // フィルター状態
     /^viewMode$/,        // ビューモード
     /^binderViewMode$/,  // バインダービューモード
     /^darkMode$/,        // ダークモード
     /^deckData$/,        // デッキデータ
     /^binderCollection$/ // バインダーコレクション
+    // filterState は除外（検索ボックス・フィルター状態はデバイスごとに保持）
   ];
 
   // 除外するキー（キャッシュデータなど）
@@ -32,7 +32,8 @@
     'releaseData',
     'dataTimestamp',
     'googleClientId',
-    'driveFileId'
+    'driveFileId',
+    'filterState'  // 検索ボックス・フィルター状態はデバイスごとに保持
   ];
 
   // 状態管理
