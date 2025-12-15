@@ -7,8 +7,7 @@
   'use strict';
 
   // Google API設定
-  // クライアントIDはセットアップ時に設定する必要があります
-  const GOOGLE_CLIENT_ID_KEY = 'googleClientId';
+  // クライアントIDは config/google-client-id.js で定義
   const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
   const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
 
@@ -29,7 +28,6 @@
     'cardData',
     'releaseData',
     'dataTimestamp',
-    'googleClientId',
     'driveFileId',
     'filterState'  // 検索ボックス・フィルター状態はデバイスごとに保持
   ];
@@ -64,12 +62,12 @@
      * Google APIの初期化
      */
     async initialize() {
-      const clientId = localStorage.getItem(GOOGLE_CLIENT_ID_KEY);
+      const clientId = window.GOOGLE_CLIENT_ID;
       if (!clientId) {
         // クライアントIDが設定されていない場合、古いキャッシュもクリア
         sessionStorage.removeItem('gapi_token');
         localStorage.removeItem('driveFileId');
-        console.log('[GoogleDriveSync] クライアントIDが設定されていません。設定ボタンから設定してください。');
+        console.log('[GoogleDriveSync] クライアントIDが設定されていません。config/google-client-id.js を確認してください。');
         return false;
       }
 
@@ -626,24 +624,17 @@
     }
 
     /**
-     * クライアントIDを設定
-     */
-    setClientId(clientId) {
-      localStorage.setItem(GOOGLE_CLIENT_ID_KEY, clientId);
-    }
-
-    /**
-     * クライアントIDを取得
+     * クライアントIDを取得（固定値）
      */
     getClientId() {
-      return localStorage.getItem(GOOGLE_CLIENT_ID_KEY);
+      return window.GOOGLE_CLIENT_ID;
     }
 
     /**
-     * クライアントIDが設定されているか
+     * クライアントIDが設定されているか（常にtrue）
      */
     hasClientId() {
-      return !!localStorage.getItem(GOOGLE_CLIENT_ID_KEY);
+      return !!window.GOOGLE_CLIENT_ID;
     }
 
     /**
