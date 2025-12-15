@@ -405,9 +405,6 @@ window.googleDriveUI = {
       <button id="google-signout-btn" class="google-signout-btn" style="display: none;" title="ログアウト">
         ログアウト
       </button>
-      <button id="google-settings-btn" class="google-settings-btn" title="Google Drive設定">
-        ⚙️
-      </button>
     `;
 
     // ヘッダーの適切な位置に挿入
@@ -428,14 +425,11 @@ window.googleDriveUI = {
   setupEventListeners: function() {
     const signinBtn = document.getElementById('google-signin-btn');
     const signoutBtn = document.getElementById('google-signout-btn');
-    const settingsBtn = document.getElementById('google-settings-btn');
 
     if (signinBtn) {
       signinBtn.addEventListener('click', () => {
-        if (window.googleDriveSync && window.googleDriveSync.hasClientId()) {
+        if (window.googleDriveSync) {
           window.googleDriveSync.signIn();
-        } else {
-          this.showSettingsModal();
         }
       });
     }
@@ -445,12 +439,6 @@ window.googleDriveUI = {
         if (window.googleDriveSync) {
           window.googleDriveSync.signOut();
         }
-      });
-    }
-
-    if (settingsBtn) {
-      settingsBtn.addEventListener('click', () => {
-        this.showSettingsModal();
       });
     }
   },
@@ -538,114 +526,6 @@ window.googleDriveUI = {
     if (errorMsg.includes('認証エラー') || errorMsg.includes('初期化エラー')) {
       alert('Google Drive同期エラー: ' + errorMsg);
     }
-  },
-
-  /**
-   * 設定モーダルを表示
-   */
-  showSettingsModal: function() {
-    // 既存のモーダルを削除
-    const existingModal = document.getElementById('google-drive-settings-modal');
-    if (existingModal) existingModal.remove();
-
-    const currentClientId = window.googleDriveSync ? window.googleDriveSync.getClientId() || '' : '';
-
-    const modal = document.createElement('div');
-    modal.id = 'google-drive-settings-modal';
-    modal.className = 'google-drive-modal-overlay';
-    modal.innerHTML = `
-      <div class="google-drive-modal">
-        <div class="google-drive-modal-header">
-          <h3>Google Drive 設定</h3>
-          <button class="modal-close-btn" id="close-settings-modal">×</button>
-        </div>
-        <div class="google-drive-modal-body">
-          <p class="settings-description">
-            Google Driveとデータを同期するには、Google Cloud ConsoleでOAuthクライアントIDを作成し、以下に入力してください。
-          </p>
-          <div class="settings-help">
-            <details>
-              <summary>設定手順を見る</summary>
-              <ol>
-                <li><a href="https://console.cloud.google.com/" target="_blank" rel="noopener">Google Cloud Console</a>にアクセス</li>
-                <li>新しいプロジェクトを作成（または既存のプロジェクトを選択）</li>
-                <li>「APIとサービス」→「OAuth同意画面」を設定</li>
-                <li>「認証情報」→「認証情報を作成」→「OAuthクライアントID」</li>
-                <li>アプリケーションの種類: 「ウェブアプリケーション」</li>
-                <li>承認済みJavaScriptオリジン: このサイトのURLを追加</li>
-                <li>作成されたクライアントIDをコピー</li>
-                <li>「APIとサービス」→「ライブラリ」→「Google Drive API」を有効化</li>
-              </ol>
-            </details>
-          </div>
-          <div class="settings-input-group">
-            <label for="google-client-id">OAuth クライアントID:</label>
-            <input type="text" id="google-client-id" placeholder="xxxx.apps.googleusercontent.com" value="${currentClientId}">
-          </div>
-          <div class="settings-actions">
-            <button id="save-client-id-btn" class="primary-btn">保存して初期化</button>
-            <button id="cancel-settings-btn" class="secondary-btn">キャンセル</button>
-          </div>
-          ${currentClientId ? `
-          <div class="settings-sync-actions">
-            <hr>
-            <h4>データ操作</h4>
-            <button id="manual-sync-btn" class="sync-action-btn">手動で同期</button>
-            <button id="reload-from-drive-btn" class="sync-action-btn warning">Driveから再読込（ローカル上書き）</button>
-          </div>
-          ` : ''}
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(modal);
-
-    // イベントリスナー
-    document.getElementById('close-settings-modal').addEventListener('click', () => modal.remove());
-    document.getElementById('cancel-settings-btn').addEventListener('click', () => modal.remove());
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) modal.remove();
-    });
-
-    document.getElementById('save-client-id-btn').addEventListener('click', async () => {
-      const clientId = document.getElementById('google-client-id').value.trim();
-      if (!clientId) {
-        alert('クライアントIDを入力してください');
-        return;
-      }
-
-      if (window.googleDriveSync) {
-        window.googleDriveSync.setClientId(clientId);
-        const success = await window.googleDriveSync.initialize();
-        if (success) {
-          alert('設定を保存しました。「ログイン」ボタンからGoogleにログインしてください。');
-          modal.remove();
-        } else {
-          alert('初期化に失敗しました。クライアントIDを確認してください。');
-        }
-      }
-    });
-
-    const manualSyncBtn = document.getElementById('manual-sync-btn');
-    if (manualSyncBtn) {
-      manualSyncBtn.addEventListener('click', async () => {
-        if (window.googleDriveSync) {
-          const success = await window.googleDriveSync.manualSync();
-          alert(success ? '同期が完了しました' : '同期に失敗しました');
-        }
-      });
-    }
-
-    const reloadBtn = document.getElementById('reload-from-drive-btn');
-    if (reloadBtn) {
-      reloadBtn.addEventListener('click', async () => {
-        if (confirm('Google Driveのデータでローカルデータを上書きします。よろしいですか？')) {
-          if (window.googleDriveSync) {
-            await window.googleDriveSync.reloadFromDrive();
-          }
-        }
-      });
-    }
   }
 };
 
@@ -719,8 +599,8 @@ window.initializeGoogleDriveSync = async function(headerSelector = '.header, hea
       window.googleDriveUI.createSyncUI(header);
     }
 
-    // クライアントIDが設定されていれば初期化
-    if (window.googleDriveSync && window.googleDriveSync.hasClientId()) {
+    // Google Drive同期を初期化
+    if (window.googleDriveSync) {
       await window.googleDriveSync.initialize();
     }
 

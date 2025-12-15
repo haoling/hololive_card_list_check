@@ -26,6 +26,7 @@ const urlsToCache = [
   './js/holoca_skill_page.js',
   './js/modal-ui.js',
   './js/utils.js',
+  './config/google-client-id.js',
   './js/google-drive-sync.js',
   './js/offline-utils.js',
   './js/battle_engine.js',
