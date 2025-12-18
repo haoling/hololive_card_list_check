@@ -679,7 +679,7 @@ document.body.classList.add("mobile-layout");
     }
 
     // 💾 保存されたデッキ読み込み
-    const savedDecks = localStorage.getItem("deckData");
+    const savedDecks = window.viewingOtherStorage.getDeckData();
     if (savedDecks) {
 try {
 decks = JSON.parse(savedDecks);

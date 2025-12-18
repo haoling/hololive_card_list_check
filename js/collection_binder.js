@@ -75,7 +75,7 @@
         console.log('🚨 バインダーIDが指定されていません');
 
         // 既存のバインダーをチェック
-        const saved = localStorage.getItem('binderCollection');
+        const saved = window.viewingOtherStorage.getBinderCollection();
         if (saved) {
           const collection = JSON.parse(saved);
           if (collection.binders && collection.binders.length > 0) {
@@ -276,8 +276,7 @@
       if (Array.isArray(cardsData)) {
 
         cardsData.forEach((card, index) => {
-          const savedCount = localStorage.getItem("count_" + card.id);
-          const count = savedCount ? parseInt(savedCount, 10) : 0;
+          const count = window.viewingOtherStorage.getCardCount(card.id);
           userCollection[card.id] = count;
 
           if (count > 0) {
@@ -306,7 +305,7 @@
     // バインダーコレクションの読み込み
     function loadBinderCollection() {
 
-      const saved = localStorage.getItem('binderCollection');
+      const saved = window.viewingOtherStorage.getBinderCollection();
 
       if (saved) {
         binderCollection = JSON.parse(saved);

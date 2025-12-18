@@ -1160,7 +1160,7 @@ window.onload = async () => {
         product: card.product,
         image: card.image_url,
         url: `https://hololive-official-cardgame.com/cardlist/?id=${key}`,
-        owned: parseInt(localStorage.getItem("count_" + key) ?? "0"),
+        owned: window.viewingOtherStorage.getCardCount(key),
         card_type: card.card_type ?? "-",
         tags: card.tags ?? [],
         skills: card.skills ?? [] // スキル情報を追加
@@ -1193,7 +1193,7 @@ window.onload = async () => {
           product: card.product,
           image: card.image_url,
           url: `https://hololive-official-cardgame.com/cardlist/?id=${key}`,
-          owned: parseInt(localStorage.getItem("count_" + key) ?? "0"),
+          owned: window.viewingOtherStorage.getCardCount(key),
           card_type: card.card_type ?? "-",
           tags: card.tags ?? [],
           skills: card.skills ?? [] // スキル情報を追加
