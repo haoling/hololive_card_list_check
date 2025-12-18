@@ -1,12 +1,12 @@
 // Version Management Configuration
 // このファイルはバージョンアップ時に更新されます
 
-const APP_VERSION = "4.16.0";
-const VERSION_DESCRIPTION = "Googleドライブエクスポート機能を追加";
+const APP_VERSION = "4.17.1";
+const VERSION_DESCRIPTION = "クエリストリングからの閲覧モード開始機能を追加";
 
 // ✅ 各ページのバージョン情報を一元管理
 const PAGE_VERSIONS = {
-  "index.html": "4.16.0",
+  "index.html": "4.17.1",
   "binder_collection.html": "4.15.1",
   "collection_binder.html": "4.15.1",
   "card_list.html": "4.15.1",
@@ -16,12 +16,11 @@ const PAGE_VERSIONS = {
 
 // ✅ 更新内容の詳細情報
 const UPDATE_DETAILS = {
-  title: "v4.16.0",
-  description: "Googleドライブエクスポート機能を追加",
+  title: "v4.17.1",
+  description: "クエリストリングからの閲覧モード開始機能を追加",
   changes: [
-    "ホーム画面にGoogleドライブへのエクスポートボタンを追加",
-    "カード所持数・デッキ・バインダーのデータをJSONファイルとしてエクスポート可能",
-    "既存ファイルがある場合は上書き確認を表示"
+    "URLに?viewFileId={GoogleドライブのファイルID}を付けると、他人のストレイジを閲覧モードで自動開始",
+    "ページロード時にクエリストリングをチェックして自動的に閲覧モードを開始"
   ]
 };
 

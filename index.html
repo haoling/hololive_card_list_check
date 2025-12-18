@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
-<!-- Version: 4.17.0 -->
+<!-- Version: 4.17.1 -->
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
@@ -1558,6 +1558,63 @@
       window.addEventListener('storageProviderChange', function(e) {
         updateViewingUI(e.detail.isViewing);
       });
+
+      // クエリストリングからviewFileIdをチェック
+      checkViewFileIdQueryString();
+    }
+
+    /**
+     * クエリストリングのviewFileIdをチェックして自動的に閲覧モードを開始
+     */
+    async function checkViewFileIdQueryString() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const viewFileId = urlParams.get('viewFileId');
+
+      if (!viewFileId) return;
+
+      // すでに閲覧中の場合はスキップ
+      if (window.storageProvider && window.storageProvider.isViewing()) {
+        console.log('すでに閲覧中のため、クエリストリングからの開始をスキップ');
+        return;
+      }
+
+      // URLからクエリストリングを削除（履歴を置換）
+      const cleanUrl = window.location.pathname + window.location.hash;
+      window.history.replaceState({}, document.title, cleanUrl);
+
+      // 読み込み中の表示
+      const startBtn = document.getElementById('startViewingBtn');
+      if (startBtn) {
+        startBtn.disabled = true;
+        startBtn.textContent = '📥 読み込み中...';
+      }
+
+      try {
+        // Googleドライブからファイルを読み込み
+        const result = await window.googleDriveSync.loadFromOtherStorage(viewFileId);
+
+        if (!result.success) {
+          alert('クエリストリングで指定されたファイルの読み込みに失敗しました: ' + result.message);
+          return;
+        }
+
+        // 閲覧モードを開始
+        if (window.storageProvider.startViewing(result.data)) {
+          window.showToast('クエリストリングからストレイジの閲覧を開始しました', 'success');
+          updateViewingUI(true);
+        } else {
+          alert('閲覧モードの開始に失敗しました');
+        }
+
+      } catch (error) {
+        console.error('クエリストリングからの閲覧開始エラー:', error);
+        alert('予期しないエラーが発生しました: ' + error.message);
+      } finally {
+        if (startBtn) {
+          startBtn.disabled = false;
+          startBtn.textContent = '🚀 開始';
+        }
+      }
     }
 
     /**
