@@ -103,6 +103,12 @@
 
     // バインダー作成モーダルを開く
     function openCreateBinderModal() {
+      // 読み取り専用モードチェック
+      if (window.readOnlyMode && window.readOnlyMode.isEnabled()) {
+        window.readOnlyMode.showWarning('バインダーの作成');
+        return;
+      }
+
       document.getElementById('createBinderModal').classList.add('show');
       document.getElementById('binderName').focus();
 
@@ -328,6 +334,12 @@
     // バインダーの編集（リッチUI対応）
     let editingBinderIndex = null;
     function editBinder(index) {
+      // 読み取り専用モードチェック
+      if (window.readOnlyMode && window.readOnlyMode.isEnabled()) {
+        window.readOnlyMode.showWarning('バインダーの編集');
+        return;
+      }
+
       editingBinderIndex = index;
       const binder = binderCollection.binders[index];
 
@@ -514,6 +526,12 @@
 
     // バインダーの削除
     function deleteBinder(index) {
+      // 読み取り専用モードチェック
+      if (window.readOnlyMode && window.readOnlyMode.isEnabled()) {
+        window.readOnlyMode.showWarning('バインダーの削除');
+        return;
+      }
+
       const binder = binderCollection.binders[index];
 
       if (confirm(`バインダー「${binder.name}」を削除しますか？\nこの操作は取り消せません。`)) {
@@ -579,6 +597,12 @@
 
     // バインダーコレクションのインポート
     function importBinderCollection() {
+      // 読み取り専用モードチェック
+      if (window.readOnlyMode && window.readOnlyMode.isEnabled()) {
+        window.readOnlyMode.showWarning('バインダーのインポート');
+        return;
+      }
+
       const fileInput = document.getElementById('importFileInput');
       const file = fileInput.files[0];
 

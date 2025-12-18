@@ -29,6 +29,12 @@ function sortDeckByTypeAndId(cardIds) {
 // toggleDarkMode は utils.js で定義されているグローバル関数を使用
 
 function createDeck() {
+  // 読み取り専用モードチェック
+  if (window.readOnlyMode && window.readOnlyMode.isEnabled()) {
+    window.readOnlyMode.showWarning('デッキの作成');
+    return;
+  }
+
   const name = prompt("新しいデッキ名を入力してください");
   if (!name || name.trim() === "") {
     alert("デッキ名を入力してください");
@@ -50,6 +56,12 @@ function switchDeck() {
 }
 
 function deleteDeck() {
+  // 読み取り専用モードチェック
+  if (window.readOnlyMode && window.readOnlyMode.isEnabled()) {
+    window.readOnlyMode.showWarning('デッキの削除');
+    return;
+  }
+
   if (!currentDeck) return;
   if (!confirm(`「${currentDeck}」を削除しますか？`)) return;
 
@@ -71,6 +83,12 @@ function deleteDeck() {
 }
 
 function addCardToDeck(cardId) {
+  // 読み取り専用モードチェック
+  if (window.readOnlyMode && window.readOnlyMode.isEnabled()) {
+    window.readOnlyMode.showWarning('デッキへのカード追加');
+    return;
+  }
+
   if (!currentDeck) {
     alert("先にデッキを選択してください");
     return;
@@ -147,6 +165,12 @@ function confirmExportDeck() {
 }
 
 function triggerDeckImport() {
+  // 読み取り専用モードチェック
+  if (window.readOnlyMode && window.readOnlyMode.isEnabled()) {
+    window.readOnlyMode.showWarning('デッキのインポート');
+    return;
+  }
+
   const hiddenFileInput = document.getElementById("importDeckFileHidden");
   hiddenFileInput.accept = ".json";
   hiddenFileInput.onchange = () => {
@@ -264,6 +288,11 @@ function updateDeckUI() {
     del.className = "delete-btn";
     del.textContent = "×";
     del.onclick = () => {
+      // 読み取り専用モードチェック
+      if (window.readOnlyMode && window.readOnlyMode.isEnabled()) {
+        window.readOnlyMode.showWarning('デッキからのカード削除');
+        return;
+      }
       decks[currentDeck] = decks[currentDeck].filter(id => id !== cardId);
       updateDeckUI();
     };

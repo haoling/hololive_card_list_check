@@ -610,10 +610,100 @@ window.initializeGoogleDriveSync = async function(headerSelector = '.header, hea
   }
 };
 
+/**
+ * 読み取り専用モード管理
+ * 全画面で編集機能を無効化するためのユーティリティ
+ */
+window.readOnlyMode = {
+  /**
+   * 読み取り専用モードの状態を取得
+   * @returns {boolean} 読み取り専用モードかどうか
+   */
+  isEnabled: function() {
+    return localStorage.getItem('readOnlyMode') === 'true';
+  },
+
+  /**
+   * 読み取り専用モードを設定
+   * @param {boolean} enabled - 有効にするかどうか
+   */
+  setEnabled: function(enabled) {
+    localStorage.setItem('readOnlyMode', enabled ? 'true' : 'false');
+    this.updateBodyClass();
+    this.dispatchChangeEvent(enabled);
+  },
+
+  /**
+   * 読み取り専用モードを切り替え
+   * @returns {boolean} 切り替え後の状態
+   */
+  toggle: function() {
+    const newState = !this.isEnabled();
+    this.setEnabled(newState);
+    return newState;
+  },
+
+  /**
+   * body要素にクラスを追加/削除
+   */
+  updateBodyClass: function() {
+    if (this.isEnabled()) {
+      document.body.classList.add('read-only-mode');
+    } else {
+      document.body.classList.remove('read-only-mode');
+    }
+  },
+
+  /**
+   * 状態変更イベントを発火
+   * @param {boolean} enabled - 新しい状態
+   */
+  dispatchChangeEvent: function(enabled) {
+    window.dispatchEvent(new CustomEvent('readOnlyModeChange', {
+      detail: { enabled: enabled }
+    }));
+  },
+
+  /**
+   * 読み取り専用モード時に警告を表示
+   * @param {string} action - 実行しようとしたアクション名
+   * @returns {boolean} 常にfalse（操作をブロックしたことを示す）
+   */
+  showWarning: function(action) {
+    const actionName = action || 'この操作';
+    alert(`読み取り専用モードが有効です。\n${actionName}を行うには、ホーム画面で読み取り専用モードを解除してください。`);
+    return false;
+  },
+
+  /**
+   * 読み取り専用モード時に操作をブロック
+   * @param {string} action - 実行しようとしたアクション名
+   * @returns {boolean} 操作が許可されたかどうか
+   */
+  checkAndWarn: function(action) {
+    if (this.isEnabled()) {
+      this.showWarning(action);
+      return false;
+    }
+    return true;
+  },
+
+  /**
+   * 初期化（ページ読み込み時に呼び出し）
+   */
+  initialize: function() {
+    this.updateBodyClass();
+    window.debugLog('読み取り専用モード初期化:', this.isEnabled() ? '有効' : '無効');
+  }
+};
+
 // 初期化処理
 document.addEventListener('DOMContentLoaded', function() {
   // ダークモードの初期化
   window.initializeDarkMode();
+
+  // 読み取り専用モードの初期化
+  window.readOnlyMode.initialize();
 
   window.debugLog('共通ユーティリティ初期化完了');
 });
