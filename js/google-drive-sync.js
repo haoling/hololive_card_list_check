@@ -490,6 +490,12 @@
         return;
       }
 
+      // 他人のストレイジを閲覧中は保存をスキップ
+      if (window.viewingOtherStorage && window.viewingOtherStorage.isViewing()) {
+        console.log('[GoogleDriveSync] 他人のストレイジ閲覧中のため保存をスキップ');
+        return;
+      }
+
       if (saveTimeout) {
         clearTimeout(saveTimeout);
       }
@@ -863,6 +869,81 @@
      */
     getExportFileName() {
       return EXPORT_FILE_NAME;
+    }
+
+    /**
+     * 他人のGoogleドライブファイルを読み込む（公開されているファイルのみ）
+     * @param {string} fileId - GoogleドライブのファイルID
+     * @returns {Object} 結果オブジェクト { success, data, message }
+     */
+    async loadFromOtherStorage(fileId) {
+      if (!fileId || typeof fileId !== 'string' || fileId.trim() === '') {
+        return {
+          success: false,
+          message: 'ファイルIDが無効です'
+        };
+      }
+
+      if (!isSignedIn) {
+        return {
+          success: false,
+          message: 'Googleにログインしてください'
+        };
+      }
+
+      try {
+        console.log('[GoogleDriveSync] 他人のストレイジを読み込み中:', fileId);
+
+        // ファイルの内容を取得
+        const fileResponse = await gapi.client.drive.files.get({
+          fileId: fileId.trim(),
+          alt: 'media',
+        });
+
+        const fileData = fileResponse.result;
+
+        // データの妥当性チェック
+        if (!fileData || typeof fileData !== 'object') {
+          return {
+            success: false,
+            message: 'ファイルのデータ形式が不正です'
+          };
+        }
+
+        console.log('[GoogleDriveSync] 他人のストレイジ読み込み成功');
+
+        return {
+          success: true,
+          data: fileData,
+          message: 'success'
+        };
+
+      } catch (error) {
+        console.error('[GoogleDriveSync] 他人のストレイジ読み込みエラー:', error);
+
+        // エラータイプに応じたメッセージを返す
+        if (error.status === 404) {
+          return {
+            success: false,
+            message: 'ファイルが見つかりません。ファイルIDを確認してください。'
+          };
+        } else if (error.status === 403) {
+          return {
+            success: false,
+            message: 'ファイルへのアクセス権限がありません。ファイルの共有設定を確認してください。'
+          };
+        } else if (error.status === 401) {
+          return {
+            success: false,
+            message: '認証エラーが発生しました。再度ログインしてください。'
+          };
+        } else {
+          return {
+            success: false,
+            message: 'ファイルの読み込みに失敗しました: ' + this.extractErrorMessage(error)
+          };
+        }
+      }
     }
   }
 

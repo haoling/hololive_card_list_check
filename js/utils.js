@@ -779,6 +779,229 @@ window.readOnlyMode = {
   }
 };
 
+/**
+ * 他人のストレイジ閲覧モード管理
+ * 他人のデータを閲覧中は自分のデータに影響を与えないようにする
+ */
+window.viewingOtherStorage = {
+  // sessionStorageのキー
+  _SESSION_KEY: 'viewingOtherStorage',
+  _BACKUP_KEY: 'viewingOtherStorage_backup',
+
+  /**
+   * 他人のストレイジを閲覧中かどうか
+   * @returns {boolean}
+   */
+  isViewing: function() {
+    return sessionStorage.getItem(this._SESSION_KEY) !== null;
+  },
+
+  /**
+   * 他人のストレイジの閲覧を開始
+   * @param {Object} data - 閲覧するデータ
+   */
+  startViewing: function(data) {
+    if (!data || typeof data !== 'object') {
+      window.errorLog('閲覧データが無効です');
+      return false;
+    }
+
+    // 既に閲覧中の場合は終了
+    if (this.isViewing()) {
+      this.stopViewing();
+    }
+
+    // 元のデータをバックアップ
+    const backup = this._backupCurrentData();
+    sessionStorage.setItem(this._BACKUP_KEY, JSON.stringify(backup));
+
+    // 閲覧データをsessionStorageに保存
+    sessionStorage.setItem(this._SESSION_KEY, JSON.stringify(data));
+
+    // 閲覧データを一時的にlocalStorageに適用
+    this._applyViewingData(data);
+
+    // 読み取り専用モードを強制的に有効化
+    window.readOnlyMode.setEnabled(true);
+
+    // イベント発火
+    this._dispatchEvent(true);
+
+    window.debugLog('他人のストレイジ閲覧開始');
+    return true;
+  },
+
+  /**
+   * 他人のストレイジの閲覧を終了
+   */
+  stopViewing: function() {
+    if (!this.isViewing()) {
+      return false;
+    }
+
+    // 元のデータを復元
+    const backupStr = sessionStorage.getItem(this._BACKUP_KEY);
+    if (backupStr) {
+      try {
+        const backup = JSON.parse(backupStr);
+        this._restoreOriginalData(backup);
+      } catch (e) {
+        window.errorLog('バックアップの復元に失敗:', e);
+      }
+    }
+
+    // 閲覧データをクリア
+    sessionStorage.removeItem(this._SESSION_KEY);
+    sessionStorage.removeItem(this._BACKUP_KEY);
+
+    // イベント発火
+    this._dispatchEvent(false);
+
+    window.debugLog('他人のストレイジ閲覧終了');
+    window.showToast('自分のストレイジに戻りました', 'success');
+
+    // ページをリロードして変更を反映
+    setTimeout(() => {
+      window.location.reload();
+    }, 500);
+
+    return true;
+  },
+
+  /**
+   * 現在のデータをバックアップ
+   * @returns {Object}
+   */
+  _backupCurrentData: function() {
+    const backup = {};
+    const keysToBackup = [];
+
+    // カード所持数、デッキ、バインダーをバックアップ
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith('count_') || key === 'deckData' || key === 'binderCollection')) {
+        keysToBackup.push(key);
+      }
+    }
+
+    keysToBackup.forEach(key => {
+      backup[key] = localStorage.getItem(key);
+    });
+
+    return backup;
+  },
+
+  /**
+   * 閲覧データを適用
+   * @param {Object} data - 適用するデータ
+   */
+  _applyViewingData: function(data) {
+    // エクスポートファイル形式の場合
+    if (data.data && data.version) {
+      const exportData = data.data;
+
+      // カード所持数をクリアして適用
+      this._clearCardCounts();
+      if (exportData.cardCounts) {
+        for (const [key, value] of Object.entries(exportData.cardCounts)) {
+          localStorage.setItem(key, value);
+        }
+      }
+
+      // デッキデータを適用
+      if (exportData.deckData) {
+        localStorage.setItem('deckData', JSON.stringify(exportData.deckData));
+      } else {
+        localStorage.removeItem('deckData');
+      }
+
+      // バインダーデータを適用
+      if (exportData.binderCollection) {
+        localStorage.setItem('binderCollection', JSON.stringify(exportData.binderCollection));
+      } else {
+        localStorage.removeItem('binderCollection');
+      }
+    } else {
+      // 旧形式のデータ（直接localStorageのキーバリュー）
+      this._clearCardCounts();
+      for (const [key, value] of Object.entries(data)) {
+        if (key.startsWith('count_') || key === 'deckData' || key === 'binderCollection') {
+          localStorage.setItem(key, value);
+        }
+      }
+    }
+  },
+
+  /**
+   * カード所持数をクリア
+   */
+  _clearCardCounts: function() {
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('count_')) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+  },
+
+  /**
+   * 元のデータを復元
+   * @param {Object} backup - バックアップデータ
+   */
+  _restoreOriginalData: function(backup) {
+    // まず閲覧データをクリア
+    this._clearCardCounts();
+    localStorage.removeItem('deckData');
+    localStorage.removeItem('binderCollection');
+
+    // バックアップを復元
+    for (const [key, value] of Object.entries(backup)) {
+      if (value !== null && value !== undefined) {
+        localStorage.setItem(key, value);
+      }
+    }
+  },
+
+  /**
+   * イベントを発火
+   * @param {boolean} isViewing - 閲覧中かどうか
+   */
+  _dispatchEvent: function(isViewing) {
+    window.dispatchEvent(new CustomEvent('viewingOtherStorageChange', {
+      detail: { isViewing: isViewing }
+    }));
+  },
+
+  /**
+   * 閲覧中のデータを取得（デバッグ用）
+   * @returns {Object|null}
+   */
+  getViewingData: function() {
+    if (!this.isViewing()) return null;
+    try {
+      const dataStr = sessionStorage.getItem(this._SESSION_KEY);
+      return dataStr ? JSON.parse(dataStr) : null;
+    } catch (e) {
+      window.errorLog('閲覧データの取得に失敗:', e);
+      return null;
+    }
+  },
+
+  /**
+   * 初期化（ページ読み込み時に呼び出し）
+   * リロード時に閲覧状態を復元
+   */
+  initialize: function() {
+    if (this.isViewing()) {
+      window.debugLog('閲覧モード: リロード後も閲覧状態を維持');
+      // 読み取り専用モードを強制的に有効化
+      window.readOnlyMode.setEnabled(true);
+    }
+  }
+};
+
 // 初期化処理
 document.addEventListener('DOMContentLoaded', function() {
   // ダークモードの初期化
@@ -786,6 +1009,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // 読み取り専用モードの初期化
   window.readOnlyMode.initialize();
+
+  // 他人のストレイジ閲覧モードの初期化
+  window.viewingOtherStorage.initialize();
 
   window.debugLog('共通ユーティリティ初期化完了');
 });

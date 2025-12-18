@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
-<!-- Version: 4.16.0 -->
+<!-- Version: 4.17.0 -->
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
@@ -289,6 +289,55 @@
       }
     }
 
+    /* 他人のストレイジ閲覧エリアのスタイル */
+    #viewingOtherStorageSection {
+      animation: pulseGlow 2s ease-in-out infinite;
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% {
+        box-shadow: 0 0 10px rgba(255, 87, 34, 0.3);
+      }
+      50% {
+        box-shadow: 0 0 20px rgba(255, 87, 34, 0.5);
+      }
+    }
+
+    /* ダークモード時の他人のストレイジ関連スタイル */
+    @media (prefers-color-scheme: dark) {
+      #viewOtherStorageSection {
+        background: rgba(44, 62, 80, 0.5) !important;
+      }
+
+      #viewOtherStorageSection h3 {
+        color: #ecf0f1 !important;
+      }
+
+      #viewOtherStorageSection p {
+        color: #bdc3c7 !important;
+      }
+
+      #viewOtherStorageSection input {
+        background: #2c3e50 !important;
+        color: #ecf0f1 !important;
+        border-color: #34495e !important;
+      }
+
+      #viewOtherStorageSection input:focus {
+        border-color: #667eea !important;
+      }
+
+      #viewOtherStorageSection details > div {
+        background: rgba(44, 62, 80, 0.8) !important;
+        color: #bdc3c7 !important;
+      }
+
+      #viewingOtherStorageSection {
+        background: rgba(255, 87, 34, 0.2) !important;
+        border-color: #ff7043 !important;
+      }
+    }
+
     /* ダークモード時のモーダルスタイル */
     @media (prefers-color-scheme: dark) {
       #imageDownloadModal > div > div {
@@ -362,7 +411,7 @@
 <body>
   <div class="container">
     <h1>ホロライブカードゲーム<br>管理ツール
-  <span style="font-size: 0.4em; color: #999; display: block; margin-top: 5px; font-weight: normal;" id="versionDisplay">[v4.16.0]</span>
+  <span style="font-size: 0.4em; color: #999; display: block; margin-top: 5px; font-weight: normal;" id="versionDisplay">[v4.17.0]</span>
     </h1>
 
     <div class="menu-grid">
@@ -408,7 +457,7 @@
     </div>
 
     <!-- 読み取り専用モード切り替え -->
-    <div style="text-align: center; margin: 20px 0; padding: 15px; background: rgba(0,0,0,0.05); border-radius: 10px;">
+    <div id="readOnlyModeSection" style="text-align: center; margin: 20px 0; padding: 15px; background: rgba(0,0,0,0.05); border-radius: 10px;">
       <div style="display: flex; align-items: center; justify-content: center; gap: 12px;">
         <span id="readOnlyLabel" style="font-size: 14px; font-weight: bold; color: #666;">🔓 編集可能</span>
         <label class="toggle-switch" style="position: relative; display: inline-block; width: 56px; height: 28px;">
@@ -430,6 +479,91 @@
       <p id="readOnlyDescription" style="margin: 10px 0 0 0; font-size: 12px; color: #888;">
         有効にすると、カード所持数・デッキ・バインダーの編集ができなくなります
       </p>
+    </div>
+
+    <!-- 他人のストレイジ閲覧中の戻るボタン -->
+    <div id="viewingOtherStorageSection" style="display: none; text-align: center; margin: 20px 0; padding: 15px; background: rgba(255, 87, 34, 0.1); border: 2px solid #ff5722; border-radius: 10px;">
+      <div style="display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap;">
+        <span style="font-size: 14px; font-weight: bold; color: #ff5722;">👁️ 他の人のストレイジを閲覧中</span>
+        <button onclick="stopViewingOtherStorage()" style="
+          background: linear-gradient(45deg, #ff5722, #f44336);
+          color: white;
+          border: none;
+          padding: 10px 20px;
+          border-radius: 20px;
+          font-size: 13px;
+          font-weight: bold;
+          cursor: pointer;
+          box-shadow: 0 4px 10px rgba(255, 87, 34, 0.3);
+          transition: all 0.3s ease;
+        " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 15px rgba(255, 87, 34, 0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 10px rgba(255, 87, 34, 0.3)';">
+          ✖️ 閲覧を終了して自分のストレイジに戻る
+        </button>
+      </div>
+      <p style="margin: 10px 0 0 0; font-size: 12px; color: #d84315;">
+        閲覧モード中は自分のデータには一切影響しません。データの編集はできません。
+      </p>
+    </div>
+
+    <!-- 他の人のストレイジを見る -->
+    <div id="viewOtherStorageSection" style="text-align: center; margin: 20px 0; padding: 15px; background: rgba(0,0,0,0.05); border-radius: 10px;">
+      <h3 style="margin: 0 0 15px 0; font-size: 16px; color: #555;">👥 他の人のストレイジを見る</h3>
+      <p style="margin: 0 0 10px 0; font-size: 12px; color: #888;">
+        共有されたGoogleドライブのファイルIDを入力してください
+      </p>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+        <input
+          type="text"
+          id="otherStorageFileId"
+          placeholder="GoogleドライブのファイルID（例: 1a2b3c...）"
+          style="
+            width: 100%;
+            max-width: 500px;
+            padding: 10px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+          "
+          onfocus="this.style.borderColor='#667eea';"
+          onblur="this.style.borderColor='#ddd';"
+        />
+        <button
+          onclick="startViewingOtherStorage()"
+          id="startViewingBtn"
+          style="
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            transition: all 0.3s ease;
+          "
+          onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(102, 126, 234, 0.4)';"
+          onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(102, 126, 234, 0.3)';"
+        >
+          🚀 開始
+        </button>
+      </div>
+      <details style="margin-top: 15px; text-align: left; max-width: 600px; margin-left: auto; margin-right: auto;">
+        <summary style="cursor: pointer; font-size: 13px; color: #667eea; font-weight: bold;">📖 ファイルIDの取得方法</summary>
+        <div style="margin-top: 10px; padding: 10px; background: rgba(255,255,255,0.5); border-radius: 5px; font-size: 12px; line-height: 1.6;">
+          <ol style="margin: 5px 0; padding-left: 20px;">
+            <li>Googleドライブで共有したいバックアップファイル（hololive_card_backup.json）を開く</li>
+            <li>右クリックして「共有」→「リンクを取得」を選択</li>
+            <li>「リンクを知っている全員」に変更して「リンクをコピー」</li>
+            <li>コピーしたURL（https://drive.google.com/file/d/<strong>ファイルID</strong>/view）から<strong>ファイルID</strong>部分を抽出</li>
+            <li>上の入力欄にファイルIDを貼り付けて「開始」をクリック</li>
+          </ol>
+          <p style="margin: 10px 0 0 0; color: #d84315;">
+            <strong>⚠️ 注意:</strong> ファイルの共有設定が「リンクを知っている全員」になっていることを確認してください。
+          </p>
+        </div>
+      </details>
     </div>
 
     <!-- 更新確認・エクスポートボタン -->
@@ -1403,7 +1537,120 @@
     }
 
     // DOMContentLoaded で初期化
-    document.addEventListener('DOMContentLoaded', initializeReadOnlyMode);
+    document.addEventListener('DOMContentLoaded', function() {
+      initializeReadOnlyMode();
+      initializeViewingOtherStorageUI();
+    });
+
+    // ===== 他人のストレイジ閲覧機能 =====
+
+    /**
+     * 他人のストレイジ閲覧UIの初期化
+     */
+    function initializeViewingOtherStorageUI() {
+      // 閲覧中かどうかをチェック
+      if (window.viewingOtherStorage && window.viewingOtherStorage.isViewing()) {
+        updateViewingUI(true);
+      }
+
+      // イベントリスナーを設定
+      window.addEventListener('viewingOtherStorageChange', function(e) {
+        updateViewingUI(e.detail.isViewing);
+      });
+    }
+
+    /**
+     * 他人のストレイジの閲覧を開始
+     */
+    async function startViewingOtherStorage() {
+      const fileIdInput = document.getElementById('otherStorageFileId');
+      const startBtn = document.getElementById('startViewingBtn');
+
+      if (!fileIdInput || !startBtn) return;
+
+      const fileId = fileIdInput.value.trim();
+
+      if (!fileId) {
+        alert('ファイルIDを入力してください');
+        fileIdInput.focus();
+        return;
+      }
+
+      // Googleログイン確認
+      if (!window.googleDriveSync || !window.googleDriveSync.getSignedIn()) {
+        alert('Googleにログインしてください');
+        return;
+      }
+
+      // ボタンを無効化
+      startBtn.disabled = true;
+      startBtn.textContent = '📥 読み込み中...';
+
+      try {
+        // Googleドライブからファイルを読み込み
+        const result = await window.googleDriveSync.loadFromOtherStorage(fileId);
+
+        if (!result.success) {
+          alert('エラー: ' + result.message);
+          startBtn.disabled = false;
+          startBtn.textContent = '🚀 開始';
+          return;
+        }
+
+        // 閲覧モードを開始
+        if (window.viewingOtherStorage.startViewing(result.data)) {
+          window.showToast('他の人のストレイジの閲覧を開始しました', 'success');
+
+          // UIを更新
+          updateViewingUI(true);
+
+          // 入力欄をクリア
+          fileIdInput.value = '';
+        } else {
+          alert('閲覧モードの開始に失敗しました');
+        }
+
+      } catch (error) {
+        console.error('閲覧開始エラー:', error);
+        alert('予期しないエラーが発生しました: ' + error.message);
+      } finally {
+        startBtn.disabled = false;
+        startBtn.textContent = '🚀 開始';
+      }
+    }
+
+    /**
+     * 他人のストレイジの閲覧を終了
+     */
+    function stopViewingOtherStorage() {
+      if (confirm('閲覧を終了して自分のストレイジに戻りますか？\n\nページがリロードされます。')) {
+        if (window.viewingOtherStorage) {
+          window.viewingOtherStorage.stopViewing();
+        }
+      }
+    }
+
+    /**
+     * 閲覧UIの表示/非表示を切り替え
+     * @param {boolean} isViewing - 閲覧中かどうか
+     */
+    function updateViewingUI(isViewing) {
+      const readOnlyModeSection = document.getElementById('readOnlyModeSection');
+      const viewingSection = document.getElementById('viewingOtherStorageSection');
+      const viewOtherSection = document.getElementById('viewOtherStorageSection');
+
+      if (isViewing) {
+        // 閲覧中: 読み取り専用トグルを非表示、閲覧中セクションを表示、入力セクションを非表示
+        if (readOnlyModeSection) readOnlyModeSection.style.display = 'none';
+        if (viewingSection) viewingSection.style.display = 'block';
+        if (viewOtherSection) viewOtherSection.style.display = 'none';
+      } else {
+        // 通常: 読み取り専用トグルを表示、閲覧中セクションを非表示、入力セクションを表示
+        if (readOnlyModeSection) readOnlyModeSection.style.display = 'block';
+        if (viewingSection) viewingSection.style.display = 'none';
+        if (viewOtherSection) viewOtherSection.style.display = 'block';
+      }
+    }
 
     // ===== ドライブエクスポート機能 =====
     let exportInProgress = false;
