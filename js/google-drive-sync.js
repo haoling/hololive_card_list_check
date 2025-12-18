@@ -1051,6 +1051,156 @@
         }
       }
     }
+
+    /**
+     * ファイルの共有設定を取得
+     * @param {string} fileId - GoogleドライブのファイルID
+     * @returns {Object} { success, isPublic, permissions }
+     */
+    async getFilePermissions(fileId) {
+      if (!isSignedIn) {
+        return { success: false, message: 'Googleにログインしていません' };
+      }
+
+      try {
+        const token = gapi.client.getToken().access_token;
+        const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions?fields=permissions(id,type,role)`, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`権限取得失敗: ${response.status}`);
+        }
+
+        const result = await response.json();
+        const permissions = result.permissions || [];
+
+        // anyoneで reader 権限があるかチェック
+        const isPublic = permissions.some(p => p.type === 'anyone' && p.role === 'reader');
+
+        return {
+          success: true,
+          isPublic,
+          permissions
+        };
+      } catch (error) {
+        console.error('[GoogleDriveSync] 権限取得エラー:', error);
+        return {
+          success: false,
+          message: '共有設定の取得に失敗しました: ' + this.extractErrorMessage(error)
+        };
+      }
+    }
+
+    /**
+     * ファイルを「リンクを知っている人なら誰でも閲覧可」に設定
+     * @param {string} fileId - GoogleドライブのファイルID
+     * @returns {Object} { success, message }
+     */
+    async makeFilePublic(fileId) {
+      if (!isSignedIn) {
+        return { success: false, message: 'Googleにログインしていません' };
+      }
+
+      try {
+        // まず現在の権限を確認
+        const currentPermissions = await this.getFilePermissions(fileId);
+        if (currentPermissions.success && currentPermissions.isPublic) {
+          console.log('[GoogleDriveSync] ファイルは既に公開設定です');
+          return { success: true, message: 'already_public' };
+        }
+
+        const token = gapi.client.getToken().access_token;
+        const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            type: 'anyone',
+            role: 'reader'
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`公開設定失敗: ${response.status}`);
+        }
+
+        console.log('[GoogleDriveSync] ファイルを公開設定にしました');
+        return { success: true, message: 'made_public' };
+      } catch (error) {
+        console.error('[GoogleDriveSync] 公開設定エラー:', error);
+        return {
+          success: false,
+          message: '共有設定の変更に失敗しました: ' + this.extractErrorMessage(error)
+        };
+      }
+    }
+
+    /**
+     * ファイルを「招待された人のみ閲覧可」に変更（公開設定を解除）
+     * @param {string} fileId - GoogleドライブのファイルID
+     * @returns {Object} { success, message }
+     */
+    async makeFilePrivate(fileId) {
+      if (!isSignedIn) {
+        return { success: false, message: 'Googleにログインしていません' };
+      }
+
+      try {
+        // まず現在の権限を取得
+        const currentPermissions = await this.getFilePermissions(fileId);
+        if (!currentPermissions.success) {
+          return currentPermissions;
+        }
+
+        // 公開設定でない場合は何もしない
+        if (!currentPermissions.isPublic) {
+          console.log('[GoogleDriveSync] ファイルは既に非公開です');
+          return { success: true, message: 'already_private' };
+        }
+
+        // anyoneの権限を削除
+        const token = gapi.client.getToken().access_token;
+        for (const permission of currentPermissions.permissions) {
+          if (permission.type === 'anyone') {
+            const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions/${permission.id}`, {
+              method: 'DELETE',
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            });
+
+            if (!response.ok) {
+              throw new Error(`非公開設定失敗: ${response.status}`);
+            }
+          }
+        }
+
+        console.log('[GoogleDriveSync] ファイルを非公開設定にしました');
+        return { success: true, message: 'made_private' };
+      } catch (error) {
+        console.error('[GoogleDriveSync] 非公開設定エラー:', error);
+        return {
+          success: false,
+          message: '共有設定の変更に失敗しました: ' + this.extractErrorMessage(error)
+        };
+      }
+    }
+
+    /**
+     * 共有用のURLを生成
+     * @param {string} fileId - GoogleドライブのファイルID
+     * @returns {string} 共有URL
+     */
+    generateShareUrl(fileId) {
+      const baseUrl = window.location.origin + window.location.pathname;
+      return `${baseUrl}?viewFileId=${fileId}`;
+    }
   }
 
   // グローバルインスタンスを作成
