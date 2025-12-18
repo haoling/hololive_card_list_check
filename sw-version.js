@@ -1,12 +1,12 @@
 // Version Management Configuration
 // このファイルはバージョンアップ時に更新されます
 
-const APP_VERSION = "4.15.1";
-const VERSION_DESCRIPTION = "バージョン更新";
+const APP_VERSION = "4.16.0";
+const VERSION_DESCRIPTION = "Googleドライブエクスポート機能を追加";
 
 // ✅ 各ページのバージョン情報を一元管理
 const PAGE_VERSIONS = {
-  "index.html": "4.15.1",
+  "index.html": "4.16.0",
   "binder_collection.html": "4.15.1",
   "collection_binder.html": "4.15.1",
   "card_list.html": "4.15.1",
@@ -16,10 +16,12 @@ const PAGE_VERSIONS = {
 
 // ✅ 更新内容の詳細情報
 const UPDATE_DETAILS = {
-  title: "v4.15.1",
-  description: "バージョン更新",
+  title: "v4.16.0",
+  description: "Googleドライブエクスポート機能を追加",
   changes: [
-    "バージョンを4.15.1に更新"
+    "ホーム画面にGoogleドライブへのエクスポートボタンを追加",
+    "カード所持数・デッキ・バインダーのデータをJSONファイルとしてエクスポート可能",
+    "既存ファイルがある場合は上書き確認を表示"
   ]
 };
 

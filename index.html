@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
-<!-- Version: 4.15.1 -->
+<!-- Version: 4.16.0 -->
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
@@ -253,6 +253,18 @@
       transform: none !important;
     }
 
+    /* ドライブエクスポートボタンのスタイル */
+    #driveExportBtn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(66, 133, 244, 0.4);
+    }
+
+    #driveExportBtn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
     /* 画像一括DLボタンのスタイル */
     #imageBulkDownloadBtn:hover:not(:disabled) {
       transform: translateY(-2px);
@@ -308,13 +320,49 @@
         background: #2c3e50 !important;
         border: 1px solid #34495e !important;
       }
+
+      /* ドライブエクスポートモーダル ダークモード */
+      #driveExportModal > div > div {
+        background: #34495e !important;
+        color: #ecf0f1 !important;
+        border: 1px solid #2c3e50 !important;
+      }
+
+      #driveExportModal h3 {
+        color: #ecf0f1 !important;
+      }
+
+      #driveExportModal > div > div > div:nth-child(2) {
+        background: #2c3e50 !important;
+        border: 1px solid #34495e !important;
+      }
+
+      #driveExportModal ul {
+        color: #bdc3c7 !important;
+      }
+
+      #driveExportModal p {
+        color: #bdc3c7 !important;
+      }
+
+      #exportLoginPrompt {
+        background: #f39c12 !important;
+        border: 1px solid #e67e22 !important;
+        color: #2c3e50 !important;
+      }
+
+      #exportExistsPrompt {
+        background: #27ae60 !important;
+        border: 1px solid #2ecc71 !important;
+        color: #ecf0f1 !important;
+      }
     }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>ホロライブカードゲーム<br>管理ツール
-  <span style="font-size: 0.4em; color: #999; display: block; margin-top: 5px; font-weight: normal;" id="versionDisplay">[v4.15.1]</span>
+  <span style="font-size: 0.4em; color: #999; display: block; margin-top: 5px; font-weight: normal;" id="versionDisplay">[v4.16.0]</span>
     </h1>
 
     <div class="menu-grid">
@@ -384,7 +432,7 @@
       </p>
     </div>
 
-    <!-- 更新確認ボタン -->
+    <!-- 更新確認・エクスポートボタン -->
     <div style="text-align: center; margin: 20px 0;">
       <button id="updateCheckBtn" onclick="checkForUpdates()" style="
         background: linear-gradient(45deg, #28a745, #20c997);
@@ -400,6 +448,21 @@
         margin: 0 10px;
       ">
         🔄 更新確認
+      </button>
+      <button id="driveExportBtn" onclick="showDriveExportDialog()" style="
+        background: linear-gradient(45deg, #4285f4, #34a853);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 25px;
+        font-size: 14px;
+        font-weight: bold;
+        cursor: pointer;
+        box-shadow: 0 4px 15px rgba(66, 133, 244, 0.3);
+        transition: all 0.3s ease;
+        margin: 0 10px;
+      ">
+        ☁️ ドライブにエクスポート
       </button>
       <!-- モバイル版のみ画像一括DLボタンを表示 -->
       <button onclick="showImageDownloadDialog()" id="imageBulkDownloadBtn" class="mobile-only" style="
@@ -448,6 +511,47 @@
         <p>このツールの使用により生じた損害について、作成者は一切の責任を負いません。</p>
       </div>
       <p id="offline-status" style="font-size: 0.8em; margin-top: 10px;"></p>
+    </div>
+  </div>
+
+  <!-- ドライブエクスポートモーダル -->
+  <div id="driveExportModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:2000; backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);">
+    <div style="display:flex; align-items:center; justify-content:center; width:100%; height:100%;">
+      <div style="background:white; padding:30px; border-radius:10px; max-width:500px; width:90%; text-align:center; box-shadow:0 4px 20px rgba(0,0,0,0.3); animation: modalSlideIn 0.3s ease-out;">
+        <h3 style="margin-top:0; color:#333;">☁️ Googleドライブにエクスポート</h3>
+        <div style="margin:20px 0; padding:15px; background:#f5f5f5; border-radius:5px; text-align:left;">
+          <p style="margin:5px 0;"><strong>エクスポート内容:</strong></p>
+          <ul style="margin:10px 0; padding-left:20px; color:#666; font-size:0.95em;">
+            <li>カード所持数</li>
+            <li>保存したデッキ</li>
+            <li>バインダーコレクション</li>
+          </ul>
+          <p style="margin:10px 0 5px 0; font-size:0.9em; color:#666;">
+            <strong>ファイル名:</strong> <span id="exportFileName">hololive_card_backup.json</span>
+          </p>
+        </div>
+        <div id="exportLoginPrompt" style="display:none; margin:15px 0; padding:10px; background:#fff3cd; border:1px solid #ffeaa7; border-radius:5px; font-size:0.9em; color:#856404;">
+          <strong>⚠️ Googleログインが必要です</strong><br>
+          エクスポートするにはGoogleアカウントにログインしてください。
+        </div>
+        <div id="exportExistsPrompt" style="display:none; margin:15px 0; padding:10px; background:#d4edda; border:1px solid #c3e6cb; border-radius:5px; font-size:0.9em; color:#155724;">
+          <strong>📁 既存ファイルが見つかりました</strong><br>
+          <span id="existingFileInfo"></span><br>
+          上書きしますか？
+        </div>
+        <div id="exportProgress" style="display:none; margin:15px 0;">
+          <div style="background:#e9ecef; border-radius:10px; height:20px; overflow:hidden;">
+            <div id="exportProgressBar" style="background:linear-gradient(90deg, #4285f4 0%, #34a853 100%); height:100%; width:0%; transition:width 0.3s;"></div>
+          </div>
+          <p id="exportProgressText" style="margin:10px 0; font-size:0.9em; color:#666;">準備中...</p>
+        </div>
+        <div id="exportResult" style="display:none; margin:15px 0; padding:10px; border-radius:5px; font-size:0.9em;"></div>
+        <div style="margin-top:20px;">
+          <button onclick="executeExport(false)" id="exportStartBtn" style="background:#4285f4; color:white; border:none; padding:10px 20px; border-radius:5px; cursor:pointer; margin-right:10px; font-size:16px; transition: all 0.3s ease;">☁️ エクスポート</button>
+          <button onclick="executeExport(true)" id="exportOverwriteBtn" style="display:none; background:#f4b400; color:white; border:none; padding:10px 20px; border-radius:5px; cursor:pointer; margin-right:10px; font-size:16px; transition: all 0.3s ease;">📝 上書き</button>
+          <button onclick="hideDriveExportDialog()" id="exportCancelBtn" style="background:#6c757d; color:white; border:none; padding:10px 20px; border-radius:5px; cursor:pointer; font-size:16px;">キャンセル</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1300,6 +1404,194 @@
 
     // DOMContentLoaded で初期化
     document.addEventListener('DOMContentLoaded', initializeReadOnlyMode);
+
+    // ===== ドライブエクスポート機能 =====
+    let exportInProgress = false;
+
+    // ドライブエクスポートダイアログを表示
+    async function showDriveExportDialog() {
+      const modal = document.getElementById('driveExportModal');
+      const loginPrompt = document.getElementById('exportLoginPrompt');
+      const existsPrompt = document.getElementById('exportExistsPrompt');
+      const exportProgress = document.getElementById('exportProgress');
+      const exportResult = document.getElementById('exportResult');
+      const startBtn = document.getElementById('exportStartBtn');
+      const overwriteBtn = document.getElementById('exportOverwriteBtn');
+      const exportFileName = document.getElementById('exportFileName');
+
+      // 状態をリセット
+      loginPrompt.style.display = 'none';
+      existsPrompt.style.display = 'none';
+      exportProgress.style.display = 'none';
+      exportResult.style.display = 'none';
+      startBtn.style.display = 'inline-block';
+      startBtn.disabled = false;
+      startBtn.textContent = '☁️ エクスポート';
+      overwriteBtn.style.display = 'none';
+
+      // ファイル名を表示
+      if (window.googleDriveSync) {
+        exportFileName.textContent = window.googleDriveSync.getExportFileName();
+      }
+
+      // ログイン状態をチェック
+      if (!window.googleDriveSync || !window.googleDriveSync.getSignedIn()) {
+        loginPrompt.style.display = 'block';
+        startBtn.disabled = true;
+        startBtn.textContent = 'ログインしてください';
+      }
+
+      modal.style.display = 'block';
+    }
+
+    // ドライブエクスポートダイアログを非表示
+    function hideDriveExportDialog() {
+      const modal = document.getElementById('driveExportModal');
+      if (exportInProgress) {
+        if (!confirm('エクスポートを中断しますか？')) {
+          return;
+        }
+        exportInProgress = false;
+      }
+      modal.style.display = 'none';
+    }
+
+    // エクスポートを実行
+    async function executeExport(overwrite) {
+      if (exportInProgress) return;
+
+      if (!window.googleDriveSync || !window.googleDriveSync.getSignedIn()) {
+        alert('Googleにログインしてください');
+        return;
+      }
+
+      exportInProgress = true;
+
+      const loginPrompt = document.getElementById('exportLoginPrompt');
+      const existsPrompt = document.getElementById('exportExistsPrompt');
+      const exportProgress = document.getElementById('exportProgress');
+      const exportProgressBar = document.getElementById('exportProgressBar');
+      const exportProgressText = document.getElementById('exportProgressText');
+      const exportResult = document.getElementById('exportResult');
+      const startBtn = document.getElementById('exportStartBtn');
+      const overwriteBtn = document.getElementById('exportOverwriteBtn');
+      const cancelBtn = document.getElementById('exportCancelBtn');
+
+      // UIを更新
+      loginPrompt.style.display = 'none';
+      existsPrompt.style.display = 'none';
+      exportProgress.style.display = 'block';
+      exportResult.style.display = 'none';
+      startBtn.disabled = true;
+      overwriteBtn.style.display = 'none';
+      cancelBtn.textContent = '中断';
+
+      try {
+        // プログレスを更新
+        exportProgressBar.style.width = '30%';
+        exportProgressText.textContent = 'データを収集中...';
+
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        exportProgressBar.style.width = '60%';
+        exportProgressText.textContent = 'Googleドライブにアップロード中...';
+
+        // エクスポート実行
+        const result = await window.googleDriveSync.exportToFile(overwrite);
+
+        if (!result.success) {
+          if (result.message === 'exists') {
+            // ファイルが既に存在する場合
+            exportProgress.style.display = 'none';
+            existsPrompt.style.display = 'block';
+
+            const existingFileInfo = document.getElementById('existingFileInfo');
+            const modifiedDate = new Date(result.existingFile.modifiedTime);
+            existingFileInfo.textContent = `最終更新: ${modifiedDate.toLocaleString('ja-JP')}`;
+
+            startBtn.style.display = 'none';
+            overwriteBtn.style.display = 'inline-block';
+            cancelBtn.textContent = 'キャンセル';
+            exportInProgress = false;
+            return;
+          } else {
+            throw new Error(result.message);
+          }
+        }
+
+        // 成功
+        exportProgressBar.style.width = '100%';
+        exportProgressText.textContent = '完了！';
+
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        exportProgress.style.display = 'none';
+        exportResult.style.display = 'block';
+        exportResult.style.background = '#d4edda';
+        exportResult.style.border = '1px solid #c3e6cb';
+        exportResult.style.color = '#155724';
+
+        const actionText = result.message === 'updated' ? '上書き保存' : '新規作成';
+        exportResult.innerHTML = `
+          <strong>✅ エクスポート${actionText === '上書き保存' ? '（上書き）' : ''}完了！</strong><br>
+          <span style="font-size:0.85em;">
+            ファイル名: ${result.fileName}<br>
+            カード所持数: ${result.stats.cardCount}件<br>
+            デッキ: ${result.stats.deckCount}件<br>
+            バインダー: ${result.stats.binderCount}件
+          </span>
+        `;
+
+        startBtn.style.display = 'none';
+        overwriteBtn.style.display = 'none';
+        cancelBtn.textContent = '閉じる';
+
+      } catch (error) {
+        console.error('エクスポートエラー:', error);
+
+        exportProgress.style.display = 'none';
+        exportResult.style.display = 'block';
+        exportResult.style.background = '#f8d7da';
+        exportResult.style.border = '1px solid #f5c6cb';
+        exportResult.style.color = '#721c24';
+        exportResult.innerHTML = `<strong>❌ エクスポート失敗</strong><br>${error.message || '不明なエラー'}`;
+
+        startBtn.disabled = false;
+        cancelBtn.textContent = '閉じる';
+      } finally {
+        exportInProgress = false;
+      }
+    }
+
+    // Googleログイン状態の変更を監視
+    window.addEventListener('googleSignInChange', function(e) {
+      const driveExportBtn = document.getElementById('driveExportBtn');
+      const loginPrompt = document.getElementById('exportLoginPrompt');
+      const startBtn = document.getElementById('exportStartBtn');
+
+      if (e.detail.signedIn) {
+        // ログインした
+        if (driveExportBtn) {
+          driveExportBtn.style.opacity = '1';
+        }
+        if (loginPrompt) {
+          loginPrompt.style.display = 'none';
+        }
+        if (startBtn) {
+          startBtn.disabled = false;
+          startBtn.textContent = '☁️ エクスポート';
+        }
+      } else {
+        // ログアウトした
+        if (loginPrompt && loginPrompt.closest('#driveExportModal').style.display !== 'none') {
+          loginPrompt.style.display = 'block';
+        }
+        if (startBtn) {
+          startBtn.disabled = true;
+          startBtn.textContent = 'ログインしてください';
+        }
+      }
+    });
 
     // 全キャッシュ削除機能
     async function clearAllCache() {
