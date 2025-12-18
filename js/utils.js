@@ -780,10 +780,11 @@ window.readOnlyMode = {
 };
 
 /**
- * 他人のストレイジ閲覧モード管理
- * sessionStorageを使用し、localStorageには一切手を加えない
+ * ストレイジプロバイダー
+ * 閲覧モード時はsessionStorage、通常時はlocalStorageからデータを透過的に提供
+ * localStorageには一切手を加えない安全な設計
  */
-window.viewingOtherStorage = {
+window.storageProvider = {
   // sessionStorageのキー
   _SESSION_KEY: 'viewingStorageData',
 
@@ -874,7 +875,7 @@ window.viewingOtherStorage = {
    * @param {boolean} isViewing - 閲覧中かどうか
    */
   _dispatchEvent: function(isViewing) {
-    window.dispatchEvent(new CustomEvent('viewingOtherStorageChange', {
+    window.dispatchEvent(new CustomEvent('storageProviderChange', {
       detail: { isViewing: isViewing }
     }));
   },
@@ -1040,8 +1041,8 @@ document.addEventListener('DOMContentLoaded', function() {
   // 読み取り専用モードの初期化
   window.readOnlyMode.initialize();
 
-  // 他人のストレイジ閲覧モードの初期化
-  window.viewingOtherStorage.initialize();
+  // ストレイジプロバイダーの初期化
+  window.storageProvider.initialize();
 
   window.debugLog('共通ユーティリティ初期化完了');
 });

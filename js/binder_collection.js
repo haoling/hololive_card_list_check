@@ -17,7 +17,7 @@
 
     // バインダーコレクションの読み込み
     function loadBinderCollection() {
-      const saved = window.viewingOtherStorage.getBinderCollection();
+      const saved = window.storageProvider.getBinderCollection();
       if (saved) {
         binderCollection = JSON.parse(saved);
       }

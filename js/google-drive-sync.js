@@ -491,7 +491,7 @@
       }
 
       // 他人のストレイジを閲覧中は保存をスキップ
-      if (window.viewingOtherStorage && window.viewingOtherStorage.isViewing()) {
+      if (window.storageProvider && window.storageProvider.isViewing()) {
         console.log('[GoogleDriveSync] 他人のストレイジ閲覧中のため保存をスキップ');
         return;
       }

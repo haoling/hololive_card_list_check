@@ -1550,12 +1550,12 @@
      */
     function initializeViewingOtherStorageUI() {
       // 閲覧中かどうかをチェック
-      if (window.viewingOtherStorage && window.viewingOtherStorage.isViewing()) {
+      if (window.storageProvider && window.storageProvider.isViewing()) {
         updateViewingUI(true);
       }
 
       // イベントリスナーを設定
-      window.addEventListener('viewingOtherStorageChange', function(e) {
+      window.addEventListener('storageProviderChange', function(e) {
         updateViewingUI(e.detail.isViewing);
       });
     }
@@ -1594,7 +1594,7 @@
         }
 
         // 閲覧モードを開始
-        if (window.viewingOtherStorage.startViewing(result.data)) {
+        if (window.storageProvider.startViewing(result.data)) {
           window.showToast('他の人のストレイジの閲覧を開始しました', 'success');
 
           // UIを更新
@@ -1620,8 +1620,8 @@
      */
     function stopViewingOtherStorage() {
       if (confirm('閲覧を終了して自分のストレイジに戻りますか？\n\nページがリロードされます。')) {
-        if (window.viewingOtherStorage) {
-          window.viewingOtherStorage.stopViewing();
+        if (window.storageProvider) {
+          window.storageProvider.stopViewing();
         }
       }
     }
