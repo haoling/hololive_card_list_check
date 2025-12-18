@@ -611,6 +611,88 @@ window.initializeGoogleDriveSync = async function(headerSelector = '.header, hea
 };
 
 /**
+ * トースト通知機能
+ * 画面上部に一時的なメッセージを表示
+ */
+window.showToast = function(message, type = 'info', duration = 3000) {
+  // 既存のトーストコンテナを取得または作成
+  let container = document.getElementById('toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toast-container';
+    container.style.cssText = `
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      pointer-events: none;
+    `;
+    document.body.appendChild(container);
+  }
+
+  // トースト要素を作成
+  const toast = document.createElement('div');
+  toast.className = 'toast-notification';
+
+  // タイプに応じた色設定
+  const colors = {
+    info: { bg: '#3498db', icon: 'ℹ️' },
+    success: { bg: '#27ae60', icon: '✅' },
+    warning: { bg: '#f39c12', icon: '⚠️' },
+    error: { bg: '#e74c3c', icon: '❌' },
+    readonly: { bg: '#dc3545', icon: '🔒' }
+  };
+  const colorConfig = colors[type] || colors.info;
+
+  toast.style.cssText = `
+    background: ${colorConfig.bg};
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    opacity: 0;
+    transform: translateY(-20px);
+    transition: all 0.3s ease;
+    pointer-events: auto;
+    max-width: 90vw;
+    text-align: center;
+  `;
+
+  toast.innerHTML = `<span style="font-size: 18px;">${colorConfig.icon}</span><span>${message}</span>`;
+
+  container.appendChild(toast);
+
+  // アニメーション開始
+  requestAnimationFrame(() => {
+    toast.style.opacity = '1';
+    toast.style.transform = 'translateY(0)';
+  });
+
+  // 自動的に消去
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(-20px)';
+    setTimeout(() => {
+      if (toast.parentNode) {
+        toast.parentNode.removeChild(toast);
+      }
+    }, 300);
+  }, duration);
+
+  return toast;
+};
+
+/**
  * 読み取り専用モード管理
  * 全画面で編集機能を無効化するためのユーティリティ
  */
@@ -665,13 +747,13 @@ window.readOnlyMode = {
   },
 
   /**
-   * 読み取り専用モード時に警告を表示
+   * 読み取り専用モード時にトースト警告を表示
    * @param {string} action - 実行しようとしたアクション名
    * @returns {boolean} 常にfalse（操作をブロックしたことを示す）
    */
   showWarning: function(action) {
     const actionName = action || 'この操作';
-    alert(`読み取り専用モードが有効です。\n${actionName}を行うには、ホーム画面で読み取り専用モードを解除してください。`);
+    window.showToast(`読み取り専用モードのため${actionName}はできません`, 'readonly', 3000);
     return false;
   },
 
