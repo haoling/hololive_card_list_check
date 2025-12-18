@@ -781,12 +781,11 @@ window.readOnlyMode = {
 
 /**
  * 他人のストレイジ閲覧モード管理
- * 他人のデータを閲覧中は自分のデータに影響を与えないようにする
+ * sessionStorageを使用し、localStorageには一切手を加えない
  */
 window.viewingOtherStorage = {
   // sessionStorageのキー
-  _SESSION_KEY: 'viewingOtherStorage',
-  _BACKUP_KEY: 'viewingOtherStorage_backup',
+  _SESSION_KEY: 'viewingStorageData',
 
   /**
    * 他人のストレイジを閲覧中かどうか
@@ -811,15 +810,14 @@ window.viewingOtherStorage = {
       this.stopViewing();
     }
 
-    // 元のデータをバックアップ
-    const backup = this._backupCurrentData();
-    sessionStorage.setItem(this._BACKUP_KEY, JSON.stringify(backup));
-
-    // 閲覧データをsessionStorageに保存
-    sessionStorage.setItem(this._SESSION_KEY, JSON.stringify(data));
-
-    // 閲覧データを一時的にlocalStorageに適用
-    this._applyViewingData(data);
+    // 閲覧データをsessionStorageにJSON形式で保存（localStorageには一切触らない）
+    try {
+      sessionStorage.setItem(this._SESSION_KEY, JSON.stringify(data));
+      window.debugLog('他人のストレイジ閲覧開始 - sessionStorageに保存');
+    } catch (e) {
+      window.errorLog('sessionStorage保存エラー:', e);
+      return false;
+    }
 
     // 読み取り専用モードを強制的に有効化
     window.readOnlyMode.setEnabled(true);
@@ -839,20 +837,8 @@ window.viewingOtherStorage = {
       return false;
     }
 
-    // 元のデータを復元
-    const backupStr = sessionStorage.getItem(this._BACKUP_KEY);
-    if (backupStr) {
-      try {
-        const backup = JSON.parse(backupStr);
-        this._restoreOriginalData(backup);
-      } catch (e) {
-        window.errorLog('バックアップの復元に失敗:', e);
-      }
-    }
-
-    // 閲覧データをクリア
+    // 閲覧データをクリア（localStorageには一切触らない）
     sessionStorage.removeItem(this._SESSION_KEY);
-    sessionStorage.removeItem(this._BACKUP_KEY);
 
     // イベント発火
     this._dispatchEvent(false);
@@ -869,98 +855,17 @@ window.viewingOtherStorage = {
   },
 
   /**
-   * 現在のデータをバックアップ
-   * @returns {Object}
+   * 閲覧中のデータを取得
+   * @returns {Object|null}
    */
-  _backupCurrentData: function() {
-    const backup = {};
-    const keysToBackup = [];
-
-    // カード所持数、デッキ、バインダーをバックアップ
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && (key.startsWith('count_') || key === 'deckData' || key === 'binderCollection')) {
-        keysToBackup.push(key);
-      }
-    }
-
-    keysToBackup.forEach(key => {
-      backup[key] = localStorage.getItem(key);
-    });
-
-    return backup;
-  },
-
-  /**
-   * 閲覧データを適用
-   * @param {Object} data - 適用するデータ
-   */
-  _applyViewingData: function(data) {
-    // エクスポートファイル形式の場合
-    if (data.data && data.version) {
-      const exportData = data.data;
-
-      // カード所持数をクリアして適用
-      this._clearCardCounts();
-      if (exportData.cardCounts) {
-        for (const [key, value] of Object.entries(exportData.cardCounts)) {
-          localStorage.setItem(key, value);
-        }
-      }
-
-      // デッキデータを適用
-      if (exportData.deckData) {
-        localStorage.setItem('deckData', JSON.stringify(exportData.deckData));
-      } else {
-        localStorage.removeItem('deckData');
-      }
-
-      // バインダーデータを適用
-      if (exportData.binderCollection) {
-        localStorage.setItem('binderCollection', JSON.stringify(exportData.binderCollection));
-      } else {
-        localStorage.removeItem('binderCollection');
-      }
-    } else {
-      // 旧形式のデータ（直接localStorageのキーバリュー）
-      this._clearCardCounts();
-      for (const [key, value] of Object.entries(data)) {
-        if (key.startsWith('count_') || key === 'deckData' || key === 'binderCollection') {
-          localStorage.setItem(key, value);
-        }
-      }
-    }
-  },
-
-  /**
-   * カード所持数をクリア
-   */
-  _clearCardCounts: function() {
-    const keysToRemove = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith('count_')) {
-        keysToRemove.push(key);
-      }
-    }
-    keysToRemove.forEach(key => localStorage.removeItem(key));
-  },
-
-  /**
-   * 元のデータを復元
-   * @param {Object} backup - バックアップデータ
-   */
-  _restoreOriginalData: function(backup) {
-    // まず閲覧データをクリア
-    this._clearCardCounts();
-    localStorage.removeItem('deckData');
-    localStorage.removeItem('binderCollection');
-
-    // バックアップを復元
-    for (const [key, value] of Object.entries(backup)) {
-      if (value !== null && value !== undefined) {
-        localStorage.setItem(key, value);
-      }
+  _getViewingData: function() {
+    if (!this.isViewing()) return null;
+    try {
+      const dataStr = sessionStorage.getItem(this._SESSION_KEY);
+      return dataStr ? JSON.parse(dataStr) : null;
+    } catch (e) {
+      window.errorLog('閲覧データの取得に失敗:', e);
+      return null;
     }
   },
 
@@ -979,14 +884,7 @@ window.viewingOtherStorage = {
    * @returns {Object|null}
    */
   getViewingData: function() {
-    if (!this.isViewing()) return null;
-    try {
-      const dataStr = sessionStorage.getItem(this._SESSION_KEY);
-      return dataStr ? JSON.parse(dataStr) : null;
-    } catch (e) {
-      window.errorLog('閲覧データの取得に失敗:', e);
-      return null;
-    }
+    return this._getViewingData();
   },
 
   /**
@@ -995,9 +893,141 @@ window.viewingOtherStorage = {
    */
   initialize: function() {
     if (this.isViewing()) {
-      window.debugLog('閲覧モード: リロード後も閲覧状態を維持');
+      window.debugLog('閲覧モード: タブ内で閲覧状態を維持');
       // 読み取り専用モードを強制的に有効化
       window.readOnlyMode.setEnabled(true);
+    }
+  },
+
+  // ===== データ取得ヘルパー関数 =====
+
+  /**
+   * カード所持数を取得（閲覧中はsessionStorage、通常はlocalStorage）
+   * @param {string} cardId - カードID
+   * @returns {number} カード所持数
+   */
+  getCardCount: function(cardId) {
+    if (this.isViewing()) {
+      const data = this._getViewingData();
+      if (!data) return 0;
+
+      // エクスポートファイル形式
+      if (data.data && data.data.cardCounts) {
+        const key = `count_${cardId}`;
+        return parseInt(data.data.cardCounts[key] || '0', 10);
+      }
+      // 旧形式
+      const key = `count_${cardId}`;
+      return parseInt(data[key] || '0', 10);
+    }
+    // 通常モード：localStorageから取得
+    return parseInt(localStorage.getItem(`count_${cardId}`) || '0', 10);
+  },
+
+  /**
+   * すべてのカード所持数を取得
+   * @returns {Object} カードID -> 所持数のマップ
+   */
+  getAllCardCounts: function() {
+    if (this.isViewing()) {
+      const data = this._getViewingData();
+      if (!data) return {};
+
+      const counts = {};
+      // エクスポートファイル形式
+      if (data.data && data.data.cardCounts) {
+        for (const [key, value] of Object.entries(data.data.cardCounts)) {
+          if (key.startsWith('count_')) {
+            const cardId = key.substring(6); // 'count_'を削除
+            counts[cardId] = parseInt(value, 10);
+          }
+        }
+      } else {
+        // 旧形式
+        for (const [key, value] of Object.entries(data)) {
+          if (key.startsWith('count_')) {
+            const cardId = key.substring(6);
+            counts[cardId] = parseInt(value, 10);
+          }
+        }
+      }
+      return counts;
+    }
+    // 通常モード：localStorageから取得
+    const counts = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('count_')) {
+        const cardId = key.substring(6);
+        counts[cardId] = parseInt(localStorage.getItem(key) || '0', 10);
+      }
+    }
+    return counts;
+  },
+
+  /**
+   * デッキデータを取得
+   * @returns {Object|null}
+   */
+  getDeckData: function() {
+    if (this.isViewing()) {
+      const data = this._getViewingData();
+      if (!data) return null;
+
+      // エクスポートファイル形式
+      if (data.data && data.data.deckData) {
+        return data.data.deckData;
+      }
+      // 旧形式
+      if (data.deckData) {
+        try {
+          return typeof data.deckData === 'string' ? JSON.parse(data.deckData) : data.deckData;
+        } catch (e) {
+          return null;
+        }
+      }
+      return null;
+    }
+    // 通常モード：localStorageから取得
+    const deckDataStr = localStorage.getItem('deckData');
+    if (!deckDataStr) return null;
+    try {
+      return JSON.parse(deckDataStr);
+    } catch (e) {
+      return null;
+    }
+  },
+
+  /**
+   * バインダーコレクションを取得
+   * @returns {Array|null}
+   */
+  getBinderCollection: function() {
+    if (this.isViewing()) {
+      const data = this._getViewingData();
+      if (!data) return null;
+
+      // エクスポートファイル形式
+      if (data.data && data.data.binderCollection) {
+        return data.data.binderCollection;
+      }
+      // 旧形式
+      if (data.binderCollection) {
+        try {
+          return typeof data.binderCollection === 'string' ? JSON.parse(data.binderCollection) : data.binderCollection;
+        } catch (e) {
+          return null;
+        }
+      }
+      return null;
+    }
+    // 通常モード：localStorageから取得
+    const binderStr = localStorage.getItem('binderCollection');
+    if (!binderStr) return null;
+    try {
+      return JSON.parse(binderStr);
+    } catch (e) {
+      return null;
     }
   }
 };
