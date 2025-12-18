@@ -773,6 +773,12 @@
 
     // スロットにカードを配置
     function placeCardInSlot(slotIndex, cardId) {
+      // 読み取り専用モードチェック
+      if (window.readOnlyMode && window.readOnlyMode.isEnabled()) {
+        window.readOnlyMode.showWarning('カードの配置');
+        return;
+      }
+
       const currentPage = binderState.pages[binderState.currentPage];
 
       currentPage.slots[slotIndex] = { cardId, placedAt: Date.now() };
@@ -998,6 +1004,12 @@
 
     // カードをスロットから削除
     function removeCardFromSlot() {
+      // 読み取り専用モードチェック
+      if (window.readOnlyMode && window.readOnlyMode.isEnabled()) {
+        window.readOnlyMode.showWarning('カードの削除');
+        return;
+      }
+
       if (currentSlotIndex !== null) {
         const currentPage = binderState.pages[binderState.currentPage];
         currentPage.slots[currentSlotIndex] = null;
@@ -1392,6 +1404,12 @@
     }
 
     function addNewPage() {
+      // 読み取り専用モードチェック
+      if (window.readOnlyMode && window.readOnlyMode.isEnabled()) {
+        window.readOnlyMode.showWarning('ページの追加');
+        return;
+      }
+
       binderState.pages.push(createEmptyPage());
       binderState.currentPage = binderState.pages.length - 1;
       saveBinder();
@@ -1497,6 +1515,13 @@
     function handleDrop(e, slotIndex, targetPageIndex = null) {
       e.preventDefault();
       e.currentTarget.classList.remove('drag-over');
+
+      // 読み取り専用モードチェック
+      if (window.readOnlyMode && window.readOnlyMode.isEnabled()) {
+        window.readOnlyMode.showWarning('カードの移動');
+        draggedCardData = null;
+        return;
+      }
 
       if (!draggedCardData) {
         return;
@@ -2349,6 +2374,12 @@
 
     // 全カード初期化
     function clearAllCards() {
+      // 読み取り専用モードチェック
+      if (window.readOnlyMode && window.readOnlyMode.isEnabled()) {
+        window.readOnlyMode.showWarning('カードの一括削除');
+        return;
+      }
+
       const totalCards = binderState.pages.reduce((count, page) => {
         return count + page.slots.filter(slot => slot !== null).length;
       }, 0);

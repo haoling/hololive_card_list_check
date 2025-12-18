@@ -857,6 +857,13 @@ function setViewMode(mode) {
   }
 
   function updateOwned(id, value) {
+    // 読み取り専用モードチェック
+    if (window.readOnlyMode && window.readOnlyMode.isEnabled()) {
+      window.readOnlyMode.showWarning('カード所持数の変更');
+      renderTable(); // 入力値をリセットするために再レンダリング
+      return;
+    }
+
     const num = Math.max(0, parseInt(value) || 0);
     localStorage.setItem("count_" + id, num);
     const card = cards.find(c => c.id === id);
@@ -865,6 +872,12 @@ function setViewMode(mode) {
   }
 
   function showImportOptions() {
+    // 読み取り専用モードチェック
+    if (window.readOnlyMode && window.readOnlyMode.isEnabled()) {
+      window.readOnlyMode.showWarning('CSVインポート');
+      return;
+    }
+
     const choice = confirm("CSVインポート方法を選択してください:\n\nOK: ファイルから読み込み\nキャンセル: テキストエリアから読み込み");
     if (choice) {
       // ファイル選択を開く
@@ -899,6 +912,12 @@ function setViewMode(mode) {
   }
 
   function importCSVFromTextarea() {
+    // 読み取り専用モードチェック
+    if (window.readOnlyMode && window.readOnlyMode.isEnabled()) {
+      window.readOnlyMode.showWarning('CSVインポート');
+      return;
+    }
+
     const csvData = document.getElementById("csvInput").value.trim();
     if (!csvData) {
       alert("CSVデータを入力してください");
@@ -908,6 +927,12 @@ function setViewMode(mode) {
   }
 
   function importCSVData(csvData) {
+    // 読み取り専用モードチェック
+    if (window.readOnlyMode && window.readOnlyMode.isEnabled()) {
+      window.readOnlyMode.showWarning('CSVインポート');
+      return;
+    }
+
     const lines = csvData.trim().split("\n");
     let importedCount = 0;
 

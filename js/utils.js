@@ -610,10 +610,182 @@ window.initializeGoogleDriveSync = async function(headerSelector = '.header, hea
   }
 };
 
+/**
+ * トースト通知機能
+ * 画面上部に一時的なメッセージを表示
+ */
+window.showToast = function(message, type = 'info', duration = 3000) {
+  // 既存のトーストコンテナを取得または作成
+  let container = document.getElementById('toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toast-container';
+    container.style.cssText = `
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      pointer-events: none;
+    `;
+    document.body.appendChild(container);
+  }
+
+  // トースト要素を作成
+  const toast = document.createElement('div');
+  toast.className = 'toast-notification';
+
+  // タイプに応じた色設定
+  const colors = {
+    info: { bg: '#3498db', icon: 'ℹ️' },
+    success: { bg: '#27ae60', icon: '✅' },
+    warning: { bg: '#f39c12', icon: '⚠️' },
+    error: { bg: '#e74c3c', icon: '❌' },
+    readonly: { bg: '#dc3545', icon: '🔒' }
+  };
+  const colorConfig = colors[type] || colors.info;
+
+  toast.style.cssText = `
+    background: ${colorConfig.bg};
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    opacity: 0;
+    transform: translateY(-20px);
+    transition: all 0.3s ease;
+    pointer-events: auto;
+    max-width: 90vw;
+    text-align: center;
+  `;
+
+  toast.innerHTML = `<span style="font-size: 18px;">${colorConfig.icon}</span><span>${message}</span>`;
+
+  container.appendChild(toast);
+
+  // アニメーション開始
+  requestAnimationFrame(() => {
+    toast.style.opacity = '1';
+    toast.style.transform = 'translateY(0)';
+  });
+
+  // 自動的に消去
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(-20px)';
+    setTimeout(() => {
+      if (toast.parentNode) {
+        toast.parentNode.removeChild(toast);
+      }
+    }, 300);
+  }, duration);
+
+  return toast;
+};
+
+/**
+ * 読み取り専用モード管理
+ * 全画面で編集機能を無効化するためのユーティリティ
+ */
+window.readOnlyMode = {
+  /**
+   * 読み取り専用モードの状態を取得
+   * @returns {boolean} 読み取り専用モードかどうか
+   */
+  isEnabled: function() {
+    return localStorage.getItem('readOnlyMode') === 'true';
+  },
+
+  /**
+   * 読み取り専用モードを設定
+   * @param {boolean} enabled - 有効にするかどうか
+   */
+  setEnabled: function(enabled) {
+    localStorage.setItem('readOnlyMode', enabled ? 'true' : 'false');
+    this.updateBodyClass();
+    this.dispatchChangeEvent(enabled);
+  },
+
+  /**
+   * 読み取り専用モードを切り替え
+   * @returns {boolean} 切り替え後の状態
+   */
+  toggle: function() {
+    const newState = !this.isEnabled();
+    this.setEnabled(newState);
+    return newState;
+  },
+
+  /**
+   * body要素にクラスを追加/削除
+   */
+  updateBodyClass: function() {
+    if (this.isEnabled()) {
+      document.body.classList.add('read-only-mode');
+    } else {
+      document.body.classList.remove('read-only-mode');
+    }
+  },
+
+  /**
+   * 状態変更イベントを発火
+   * @param {boolean} enabled - 新しい状態
+   */
+  dispatchChangeEvent: function(enabled) {
+    window.dispatchEvent(new CustomEvent('readOnlyModeChange', {
+      detail: { enabled: enabled }
+    }));
+  },
+
+  /**
+   * 読み取り専用モード時にトースト警告を表示
+   * @param {string} action - 実行しようとしたアクション名
+   * @returns {boolean} 常にfalse（操作をブロックしたことを示す）
+   */
+  showWarning: function(action) {
+    const actionName = action || 'この操作';
+    window.showToast(`読み取り専用モードのため${actionName}はできません`, 'readonly', 3000);
+    return false;
+  },
+
+  /**
+   * 読み取り専用モード時に操作をブロック
+   * @param {string} action - 実行しようとしたアクション名
+   * @returns {boolean} 操作が許可されたかどうか
+   */
+  checkAndWarn: function(action) {
+    if (this.isEnabled()) {
+      this.showWarning(action);
+      return false;
+    }
+    return true;
+  },
+
+  /**
+   * 初期化（ページ読み込み時に呼び出し）
+   */
+  initialize: function() {
+    this.updateBodyClass();
+    window.debugLog('読み取り専用モード初期化:', this.isEnabled() ? '有効' : '無効');
+  }
+};
+
 // 初期化処理
 document.addEventListener('DOMContentLoaded', function() {
   // ダークモードの初期化
   window.initializeDarkMode();
+
+  // 読み取り専用モードの初期化
+  window.readOnlyMode.initialize();
 
   window.debugLog('共通ユーティリティ初期化完了');
 });
