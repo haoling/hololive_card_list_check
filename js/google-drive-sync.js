@@ -8,8 +8,13 @@
 
   // Google API設定
   // クライアントIDは config/google-client-id.js で定義
-  const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
+  // drive.appdata: アプリデータフォルダ（自動同期用）
+  // drive.file: ユーザーが作成したファイル（エクスポート用）
+  const SCOPES = 'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/drive.file';
   const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
+
+  // エクスポート用のファイル名
+  const EXPORT_FILE_NAME = 'hololive_card_backup.json';
 
   // Google Drive上のファイル名
   const DRIVE_FILE_NAME = 'hololive_card_data.json';
@@ -662,6 +667,202 @@
       driveFileId = null;
 
       return await this.loadFromDrive();
+    }
+
+    /**
+     * エクスポート用データを収集
+     * カード所持数、デッキ、バインダーのデータを収集
+     */
+    collectExportData() {
+      const exportData = {
+        version: '1.0',
+        exportedAt: new Date().toISOString(),
+        appVersion: document.getElementById('versionDisplay')?.textContent || 'unknown',
+        data: {
+          cardCounts: {},
+          deckData: null,
+          binderCollection: null
+        }
+      };
+
+      // カード所持数を収集
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('count_')) {
+          exportData.data.cardCounts[key] = localStorage.getItem(key);
+        }
+      }
+
+      // デッキデータを収集
+      const deckData = localStorage.getItem('deckData');
+      if (deckData) {
+        try {
+          exportData.data.deckData = JSON.parse(deckData);
+        } catch (e) {
+          exportData.data.deckData = deckData;
+        }
+      }
+
+      // バインダーコレクションを収集
+      const binderCollection = localStorage.getItem('binderCollection');
+      if (binderCollection) {
+        try {
+          exportData.data.binderCollection = JSON.parse(binderCollection);
+        } catch (e) {
+          exportData.data.binderCollection = binderCollection;
+        }
+      }
+
+      return exportData;
+    }
+
+    /**
+     * Google Drive上でエクスポートファイルを検索
+     * @returns {Object|null} ファイル情報（id, name, modifiedTime）またはnull
+     */
+    async findExportFile() {
+      if (!isSignedIn) {
+        return null;
+      }
+
+      try {
+        const response = await gapi.client.drive.files.list({
+          q: `name='${EXPORT_FILE_NAME}' and trashed=false`,
+          spaces: 'drive',
+          fields: 'files(id, name, modifiedTime)',
+        });
+
+        const files = response.result.files;
+        if (files && files.length > 0) {
+          return files[0];
+        }
+        return null;
+      } catch (error) {
+        console.error('[GoogleDriveSync] エクスポートファイル検索エラー:', error);
+        return null;
+      }
+    }
+
+    /**
+     * Google Driveにデータをファイルとしてエクスポート
+     * @param {boolean} overwrite 既存ファイルを上書きするかどうか
+     * @returns {Object} 結果オブジェクト { success, message, fileId, fileName }
+     */
+    async exportToFile(overwrite = false) {
+      if (!isSignedIn) {
+        return { success: false, message: 'Googleにログインしていません' };
+      }
+
+      try {
+        // エクスポートデータを収集
+        const exportData = this.collectExportData();
+        const content = JSON.stringify(exportData, null, 2);
+        const blob = new Blob([content], { type: 'application/json' });
+
+        // 既存ファイルを検索
+        const existingFile = await this.findExportFile();
+
+        if (existingFile && !overwrite) {
+          // ファイルが存在し、上書きが許可されていない
+          return {
+            success: false,
+            message: 'exists',
+            existingFile: existingFile
+          };
+        }
+
+        let fileId;
+        if (existingFile && overwrite) {
+          // 既存ファイルを更新
+          fileId = await this.updateExportFile(existingFile.id, blob);
+        } else {
+          // 新規ファイルを作成
+          fileId = await this.createExportFile(blob);
+        }
+
+        // 統計情報を計算
+        const cardCount = Object.keys(exportData.data.cardCounts).length;
+        const deckCount = exportData.data.deckData ? Object.keys(exportData.data.deckData).length : 0;
+        const binderCount = exportData.data.binderCollection ?
+          (Array.isArray(exportData.data.binderCollection) ? exportData.data.binderCollection.length :
+           Object.keys(exportData.data.binderCollection).length) : 0;
+
+        return {
+          success: true,
+          message: existingFile && overwrite ? 'updated' : 'created',
+          fileId: fileId,
+          fileName: EXPORT_FILE_NAME,
+          stats: {
+            cardCount,
+            deckCount,
+            binderCount
+          }
+        };
+      } catch (error) {
+        console.error('[GoogleDriveSync] エクスポートエラー:', error);
+        return {
+          success: false,
+          message: 'エクスポート中にエラーが発生しました: ' + this.extractErrorMessage(error)
+        };
+      }
+    }
+
+    /**
+     * 新規エクスポートファイルを作成
+     */
+    async createExportFile(blob) {
+      const metadata = {
+        name: EXPORT_FILE_NAME,
+        mimeType: 'application/json',
+      };
+
+      const form = new FormData();
+      form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+      form.append('file', blob);
+
+      const token = gapi.client.getToken().access_token;
+      const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: form,
+      });
+
+      if (!response.ok) {
+        throw new Error(`ファイル作成失敗: ${response.status}`);
+      }
+
+      const result = await response.json();
+      return result.id;
+    }
+
+    /**
+     * 既存エクスポートファイルを更新
+     */
+    async updateExportFile(fileId, blob) {
+      const token = gapi.client.getToken().access_token;
+      const response = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: blob,
+      });
+
+      if (!response.ok) {
+        throw new Error(`ファイル更新失敗: ${response.status}`);
+      }
+
+      return fileId;
+    }
+
+    /**
+     * エクスポートファイル名を取得
+     */
+    getExportFileName() {
+      return EXPORT_FILE_NAME;
     }
   }
 
