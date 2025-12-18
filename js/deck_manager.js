@@ -39,7 +39,7 @@ class DeckManager {
   // 保存されたデッキを読み込み
   loadSavedDecks() {
     try {
-      const savedDecks = localStorage.getItem("deckData");
+      const savedDecks = window.storageProvider.getDeckData();
       return savedDecks ? JSON.parse(savedDecks) : {};
     } catch (error) {
       return {};

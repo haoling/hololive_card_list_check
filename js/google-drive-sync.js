@@ -490,6 +490,12 @@
         return;
       }
 
+      // 他人のストレイジを閲覧中は保存をスキップ
+      if (window.storageProvider && window.storageProvider.isViewing()) {
+        console.log('[GoogleDriveSync] 他人のストレイジ閲覧中のため保存をスキップ');
+        return;
+      }
+
       if (saveTimeout) {
         clearTimeout(saveTimeout);
       }
@@ -863,6 +869,187 @@
      */
     getExportFileName() {
       return EXPORT_FILE_NAME;
+    }
+
+    /**
+     * 他人のGoogleドライブファイルを読み込む（公開されているファイルのみ）
+     * ログインしていない場合でも公開ファイルなら読み込める
+     * @param {string} fileId - GoogleドライブのファイルID
+     * @returns {Object} 結果オブジェクト { success, data, message }
+     */
+    async loadFromOtherStorage(fileId) {
+      if (!fileId || typeof fileId !== 'string' || fileId.trim() === '') {
+        return {
+          success: false,
+          message: 'ファイルIDが無効です'
+        };
+      }
+
+      const cleanFileId = fileId.trim();
+      console.log('[GoogleDriveSync] 他人のストレイジを読み込み中:', cleanFileId);
+
+      // ログインしている場合は認証済みAPIを使用
+      if (isSignedIn && typeof gapi !== 'undefined' && gapi.client) {
+        try {
+          // ファイルの内容を取得（認証済み）
+          const fileResponse = await gapi.client.drive.files.get({
+            fileId: cleanFileId,
+            alt: 'media',
+          });
+
+          const fileData = fileResponse.result;
+
+          // データの妥当性チェック
+          if (!fileData || typeof fileData !== 'object') {
+            return {
+              success: false,
+              message: 'ファイルのデータ形式が不正です'
+            };
+          }
+
+          console.log('[GoogleDriveSync] 他人のストレイジ読み込み成功（認証済み）');
+
+          return {
+            success: true,
+            data: fileData,
+            message: 'success'
+          };
+
+        } catch (error) {
+          console.error('[GoogleDriveSync] 認証済みAPI読み込みエラー:', error);
+
+          // エラータイプに応じたメッセージを返す
+          if (error.status === 404) {
+            return {
+              success: false,
+              message: 'ファイルが見つかりません。ファイルIDを確認してください。'
+            };
+          } else if (error.status === 403) {
+            return {
+              success: false,
+              message: 'ファイルへのアクセス権限がありません。ファイルの共有設定を「リンクを知っている全員」に変更してください。'
+            };
+          } else if (error.status === 401) {
+            return {
+              success: false,
+              message: '認証エラーが発生しました。再度ログインしてください。'
+            };
+          } else {
+            return {
+              success: false,
+              message: 'ファイルの読み込みに失敗しました: ' + this.extractErrorMessage(error)
+            };
+          }
+        }
+      }
+
+      // ログインしていない場合はAPIキーまたは公開URLで直接取得を試みる
+      try {
+        // まずAPIキーを使ってGoogle Drive API v3で取得を試みる
+        if (window.GOOGLE_API_KEY) {
+          try {
+            console.log('[GoogleDriveSync] APIキーで読み込み試行中...');
+
+            const apiUrl = `https://www.googleapis.com/drive/v3/files/${cleanFileId}?alt=media&key=${window.GOOGLE_API_KEY}`;
+
+            const apiResponse = await fetch(apiUrl, {
+              method: 'GET',
+              headers: {
+                'Accept': 'application/json'
+              }
+            });
+
+            if (apiResponse.ok) {
+              const fileData = await apiResponse.json();
+
+              // データの妥当性チェック
+              if (!fileData || typeof fileData !== 'object') {
+                throw new Error('ファイルのデータ形式が不正です');
+              }
+
+              console.log('[GoogleDriveSync] 他人のストレイジ読み込み成功（APIキー）');
+
+              return {
+                success: true,
+                data: fileData,
+                message: 'success'
+              };
+            } else {
+              console.log(`[GoogleDriveSync] APIキーでのアクセス失敗（${apiResponse.status}）、公開URLで再試行します`);
+            }
+          } catch (apiError) {
+            console.log('[GoogleDriveSync] APIキーでのアクセスエラー、公開URLで再試行します:', apiError);
+          }
+        }
+
+        // APIキーでの取得が失敗した場合、公開URLで取得を試みる
+        console.log('[GoogleDriveSync] 公開URLで読み込み試行中...');
+
+        // Google Driveの公開ファイルダウンロードURL
+        const downloadUrl = `https://drive.google.com/uc?export=download&id=${cleanFileId}`;
+
+        const response = await fetch(downloadUrl, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          // ステータスコードに応じたエラーメッセージ
+          if (response.status === 404) {
+            return {
+              success: false,
+              message: 'ファイルが見つかりません。ファイルIDを確認してください。'
+            };
+          } else if (response.status === 403) {
+            return {
+              success: false,
+              message: 'ファイルへのアクセス権限がありません。ファイルの共有設定を「リンクを知っている全員」に変更してください。'
+            };
+          } else {
+            return {
+              success: false,
+              message: `ファイルの読み込みに失敗しました（HTTP ${response.status}）`
+            };
+          }
+        }
+
+        // レスポンスをJSONとしてパース
+        const fileData = await response.json();
+
+        // データの妥当性チェック
+        if (!fileData || typeof fileData !== 'object') {
+          return {
+            success: false,
+            message: 'ファイルのデータ形式が不正です'
+          };
+        }
+
+        console.log('[GoogleDriveSync] 他人のストレイジ読み込み成功（公開URL）');
+
+        return {
+          success: true,
+          data: fileData,
+          message: 'success'
+        };
+
+      } catch (error) {
+        console.error('[GoogleDriveSync] 公開URL読み込みエラー:', error);
+
+        // ネットワークエラーやJSONパースエラーの場合
+        if (error.name === 'SyntaxError') {
+          return {
+            success: false,
+            message: 'ファイルのデータ形式が不正です。JSONファイルであることを確認してください。'
+          };
+        } else {
+          return {
+            success: false,
+            message: 'ファイルの読み込みに失敗しました: ' + error.message
+          };
+        }
+      }
     }
   }
 

@@ -17,7 +17,7 @@ class HololiveGameSetupManager {
    * テストデッキが必要かチェックして作成
    */
   createTestDeckIfNeeded() {
-    const savedDecks = localStorage.getItem("deckData");
+    const savedDecks = window.storageProvider.getDeckData();
     if (!savedDecks || Object.keys(JSON.parse(savedDecks)).length === 0) {
       this.createAndSaveTestDeck();
     }
