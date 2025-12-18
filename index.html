@@ -509,7 +509,8 @@
     <div id="viewOtherStorageSection" style="text-align: center; margin: 20px 0; padding: 15px; background: rgba(0,0,0,0.05); border-radius: 10px;">
       <h3 style="margin: 0 0 15px 0; font-size: 16px; color: #555;">👥 他の人のストレイジを見る</h3>
       <p style="margin: 0 0 10px 0; font-size: 12px; color: #888;">
-        共有されたGoogleドライブのファイルIDを入力してください
+        共有されたGoogleドライブのファイルIDを入力してください<br>
+        <span style="color: #28a745; font-weight: bold;">✓ Googleログイン不要で閲覧できます</span>
       </p>
       <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
         <input
@@ -1561,6 +1562,7 @@
 
     /**
      * 他人のストレイジの閲覧を開始
+     * Googleにログインしていなくても公開ファイルなら閲覧可能
      */
     async function startViewingOtherStorage() {
       const fileIdInput = document.getElementById('otherStorageFileId');
@@ -1576,18 +1578,12 @@
         return;
       }
 
-      // Googleログイン確認
-      if (!window.googleDriveSync || !window.googleDriveSync.getSignedIn()) {
-        alert('Googleにログインしてください');
-        return;
-      }
-
       // ボタンを無効化
       startBtn.disabled = true;
       startBtn.textContent = '📥 読み込み中...';
 
       try {
-        // Googleドライブからファイルを読み込み
+        // Googleドライブからファイルを読み込み（ログイン不要）
         const result = await window.googleDriveSync.loadFromOtherStorage(fileId);
 
         if (!result.success) {

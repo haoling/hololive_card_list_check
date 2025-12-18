@@ -873,6 +873,7 @@
 
     /**
      * 他人のGoogleドライブファイルを読み込む（公開されているファイルのみ）
+     * ログインしていない場合でも公開ファイルなら読み込める
      * @param {string} fileId - GoogleドライブのファイルID
      * @returns {Object} 結果オブジェクト { success, data, message }
      */
@@ -884,23 +885,100 @@
         };
       }
 
-      if (!isSignedIn) {
-        return {
-          success: false,
-          message: 'Googleにログインしてください'
-        };
+      const cleanFileId = fileId.trim();
+      console.log('[GoogleDriveSync] 他人のストレイジを読み込み中:', cleanFileId);
+
+      // ログインしている場合は認証済みAPIを使用
+      if (isSignedIn && typeof gapi !== 'undefined' && gapi.client) {
+        try {
+          // ファイルの内容を取得（認証済み）
+          const fileResponse = await gapi.client.drive.files.get({
+            fileId: cleanFileId,
+            alt: 'media',
+          });
+
+          const fileData = fileResponse.result;
+
+          // データの妥当性チェック
+          if (!fileData || typeof fileData !== 'object') {
+            return {
+              success: false,
+              message: 'ファイルのデータ形式が不正です'
+            };
+          }
+
+          console.log('[GoogleDriveSync] 他人のストレイジ読み込み成功（認証済み）');
+
+          return {
+            success: true,
+            data: fileData,
+            message: 'success'
+          };
+
+        } catch (error) {
+          console.error('[GoogleDriveSync] 認証済みAPI読み込みエラー:', error);
+
+          // エラータイプに応じたメッセージを返す
+          if (error.status === 404) {
+            return {
+              success: false,
+              message: 'ファイルが見つかりません。ファイルIDを確認してください。'
+            };
+          } else if (error.status === 403) {
+            return {
+              success: false,
+              message: 'ファイルへのアクセス権限がありません。ファイルの共有設定を「リンクを知っている全員」に変更してください。'
+            };
+          } else if (error.status === 401) {
+            return {
+              success: false,
+              message: '認証エラーが発生しました。再度ログインしてください。'
+            };
+          } else {
+            return {
+              success: false,
+              message: 'ファイルの読み込みに失敗しました: ' + this.extractErrorMessage(error)
+            };
+          }
+        }
       }
 
+      // ログインしていない場合は公開URLで直接取得を試みる
       try {
-        console.log('[GoogleDriveSync] 他人のストレイジを読み込み中:', fileId);
+        console.log('[GoogleDriveSync] 公開URLで読み込み試行中...');
 
-        // ファイルの内容を取得
-        const fileResponse = await gapi.client.drive.files.get({
-          fileId: fileId.trim(),
-          alt: 'media',
+        // Google Driveの公開ファイルダウンロードURL
+        const downloadUrl = `https://drive.google.com/uc?export=download&id=${cleanFileId}`;
+
+        const response = await fetch(downloadUrl, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json'
+          }
         });
 
-        const fileData = fileResponse.result;
+        if (!response.ok) {
+          // ステータスコードに応じたエラーメッセージ
+          if (response.status === 404) {
+            return {
+              success: false,
+              message: 'ファイルが見つかりません。ファイルIDを確認してください。'
+            };
+          } else if (response.status === 403) {
+            return {
+              success: false,
+              message: 'ファイルへのアクセス権限がありません。ファイルの共有設定を「リンクを知っている全員」に変更してください。'
+            };
+          } else {
+            return {
+              success: false,
+              message: `ファイルの読み込みに失敗しました（HTTP ${response.status}）`
+            };
+          }
+        }
+
+        // レスポンスをJSONとしてパース
+        const fileData = await response.json();
 
         // データの妥当性チェック
         if (!fileData || typeof fileData !== 'object') {
@@ -910,7 +988,7 @@
           };
         }
 
-        console.log('[GoogleDriveSync] 他人のストレイジ読み込み成功');
+        console.log('[GoogleDriveSync] 他人のストレイジ読み込み成功（公開URL）');
 
         return {
           success: true,
@@ -919,28 +997,18 @@
         };
 
       } catch (error) {
-        console.error('[GoogleDriveSync] 他人のストレイジ読み込みエラー:', error);
+        console.error('[GoogleDriveSync] 公開URL読み込みエラー:', error);
 
-        // エラータイプに応じたメッセージを返す
-        if (error.status === 404) {
+        // ネットワークエラーやJSONパースエラーの場合
+        if (error.name === 'SyntaxError') {
           return {
             success: false,
-            message: 'ファイルが見つかりません。ファイルIDを確認してください。'
-          };
-        } else if (error.status === 403) {
-          return {
-            success: false,
-            message: 'ファイルへのアクセス権限がありません。ファイルの共有設定を確認してください。'
-          };
-        } else if (error.status === 401) {
-          return {
-            success: false,
-            message: '認証エラーが発生しました。再度ログインしてください。'
+            message: 'ファイルのデータ形式が不正です。JSONファイルであることを確認してください。'
           };
         } else {
           return {
             success: false,
-            message: 'ファイルの読み込みに失敗しました: ' + this.extractErrorMessage(error)
+            message: 'ファイルの読み込みに失敗しました: ' + error.message
           };
         }
       }
