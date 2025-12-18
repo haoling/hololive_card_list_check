@@ -1,26 +1,25 @@
 // Version Management Configuration
 // このファイルはバージョンアップ時に更新されます
 
-const APP_VERSION = "4.17.2";
-const VERSION_DESCRIPTION = "クエリストリングからの閲覧モード開始機能を追加";
+const APP_VERSION = "4.17.3";
+const VERSION_DESCRIPTION = "バージョン更新";
 
 // ✅ 各ページのバージョン情報を一元管理
 const PAGE_VERSIONS = {
-  "index.html": "4.17.2",
-  "binder_collection.html": "4.17.2",
-  "collection_binder.html": "4.17.2",
-  "card_list.html": "4.17.2",
-  "holoca_skill_page.html": "4.17.2",
-  "deck_builder.html": "4.17.2"
+  "index.html": "4.17.3",
+  "binder_collection.html": "4.17.3",
+  "collection_binder.html": "4.17.3",
+  "card_list.html": "4.17.3",
+  "holoca_skill_page.html": "4.17.3",
+  "deck_builder.html": "4.17.3"
 };
 
 // ✅ 更新内容の詳細情報
 const UPDATE_DETAILS = {
-  title: "v4.17.2",
-  description: "クエリストリングからの閲覧モード開始機能を追加",
+  title: "v4.17.3",
+  description: "バージョン更新",
   changes: [
-    "URLに?viewFileId={GoogleドライブのファイルID}を付けると、他人のストレイジを閲覧モードで自動開始",
-    "ページロード時にクエリストリングをチェックして自動的に閲覧モードを開始"
+    "バージョンを4.17.3に更新"
   ]
 };
 
