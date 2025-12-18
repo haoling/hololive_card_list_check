@@ -405,6 +405,32 @@
         border: 1px solid #2ecc71 !important;
         color: #ecf0f1 !important;
       }
+
+      /* 公開設定チェックボックス */
+      #driveExportModal > div > div > div:nth-child(3) {
+        background: #2c4a60 !important;
+        border: 1px solid #3d6a8a !important;
+      }
+
+      #driveExportModal > div > div > div:nth-child(3) span {
+        color: #5fa8d3 !important;
+      }
+
+      #driveExportModal > div > div > div:nth-child(3) span span {
+        color: #a0aab0 !important;
+      }
+
+      /* 共有URL表示部分 */
+      #exportResult div[style*="background:#e8f4fd"] {
+        background: #2c4a60 !important;
+        border: 1px solid #3d6a8a !important;
+      }
+
+      #shareUrlInput {
+        background: #1e3040 !important;
+        color: #ecf0f1 !important;
+        border: 1px solid #3d6a8a !important;
+      }
     }
   </style>
 </head>
@@ -664,6 +690,15 @@
           <p style="margin:10px 0 5px 0; font-size:0.9em; color:#666;">
             <strong>ファイル名:</strong> <span id="exportFileName">hololive_card_backup.json</span>
           </p>
+        </div>
+        <div style="margin:15px 0; padding:10px; background:#e8f4fd; border:1px solid #b3d7f5; border-radius:5px; text-align:left;">
+          <label style="display:flex; align-items:flex-start; cursor:pointer; gap:10px;">
+            <input type="checkbox" id="exportPublicCheckbox" style="margin-top:3px; width:18px; height:18px; cursor:pointer;">
+            <span style="font-size:0.9em; color:#0066cc;">
+              <strong>🔗 誰でも閲覧可能にする</strong><br>
+              <span style="color:#666; font-size:0.85em;">リンクを知っている人なら誰でも閲覧できるようになります</span>
+            </span>
+          </label>
         </div>
         <div id="exportLoginPrompt" style="display:none; margin:15px 0; padding:10px; background:#fff3cd; border:1px solid #ffeaa7; border-radius:5px; font-size:0.9em; color:#856404;">
           <strong>⚠️ Googleログインが必要です</strong><br>
@@ -1820,6 +1855,43 @@
         }
 
         // 成功
+        exportProgressBar.style.width = '80%';
+        exportProgressText.textContent = '共有設定を処理中...';
+
+        // チェックボックスの状態を取得
+        const publicCheckbox = document.getElementById('exportPublicCheckbox');
+        const makePublic = publicCheckbox && publicCheckbox.checked;
+
+        // 共有設定を処理
+        let shareUrl = null;
+        let sharingMessage = '';
+
+        if (makePublic) {
+          // 公開設定にする
+          const shareResult = await window.googleDriveSync.makeFilePublic(result.fileId);
+          if (shareResult.success) {
+            shareUrl = window.googleDriveSync.generateShareUrl(result.fileId);
+            if (shareResult.message === 'made_public') {
+              sharingMessage = '🔗 公開設定に変更しました';
+            } else {
+              sharingMessage = '🔗 既に公開設定です';
+            }
+          } else {
+            sharingMessage = '⚠️ 公開設定に失敗: ' + shareResult.message;
+          }
+        } else {
+          // 非公開設定にする（既に公開の場合のみ）
+          const privateResult = await window.googleDriveSync.makeFilePrivate(result.fileId);
+          if (privateResult.success) {
+            if (privateResult.message === 'made_private') {
+              sharingMessage = '🔒 非公開設定に変更しました';
+            }
+            // already_private の場合はメッセージなし
+          } else {
+            sharingMessage = '⚠️ 非公開設定に失敗: ' + privateResult.message;
+          }
+        }
+
         exportProgressBar.style.width = '100%';
         exportProgressText.textContent = '完了！';
 
@@ -1832,7 +1904,7 @@
         exportResult.style.color = '#155724';
 
         const actionText = result.message === 'updated' ? '上書き保存' : '新規作成';
-        exportResult.innerHTML = `
+        let resultHtml = `
           <strong>✅ エクスポート${actionText === '上書き保存' ? '（上書き）' : ''}完了！</strong><br>
           <span style="font-size:0.85em;">
             ファイル名: ${result.fileName}<br>
@@ -1841,6 +1913,27 @@
             バインダー: ${result.stats.binderCount}件
           </span>
         `;
+
+        if (sharingMessage) {
+          resultHtml += `<br><span style="font-size:0.85em;">${sharingMessage}</span>`;
+        }
+
+        if (shareUrl) {
+          resultHtml += `
+            <div style="margin-top:10px; padding:10px; background:#e8f4fd; border:1px solid #b3d7f5; border-radius:5px; text-align:left;">
+              <strong style="color:#0066cc;">📤 共有URL:</strong><br>
+              <div style="display:flex; gap:5px; margin-top:5px;">
+                <input type="text" id="shareUrlInput" value="${shareUrl}" readonly
+                  style="flex:1; padding:8px; border:1px solid #ccc; border-radius:4px; font-size:0.85em; background:#fff;">
+                <button onclick="copyShareUrl()" style="padding:8px 12px; background:#4285f4; color:white; border:none; border-radius:4px; cursor:pointer; font-size:0.85em; white-space:nowrap;">
+                  📋 コピー
+                </button>
+              </div>
+            </div>
+          `;
+        }
+
+        exportResult.innerHTML = resultHtml;
 
         startBtn.style.display = 'none';
         overwriteBtn.style.display = 'none';
@@ -1860,6 +1953,46 @@
         cancelBtn.textContent = '閉じる';
       } finally {
         exportInProgress = false;
+      }
+    }
+
+    // 共有URLをコピー
+    function copyShareUrl() {
+      const input = document.getElementById('shareUrlInput');
+      if (!input) return;
+
+      input.select();
+      input.setSelectionRange(0, 99999); // モバイル対応
+
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(input.value).then(() => {
+            showCopySuccess();
+          }).catch(() => {
+            // フォールバック
+            document.execCommand('copy');
+            showCopySuccess();
+          });
+        } else {
+          document.execCommand('copy');
+          showCopySuccess();
+        }
+      } catch (err) {
+        console.error('コピーに失敗:', err);
+        alert('コピーに失敗しました。手動でコピーしてください。');
+      }
+    }
+
+    function showCopySuccess() {
+      const btn = document.querySelector('#exportResult button');
+      if (btn) {
+        const originalText = btn.textContent;
+        btn.textContent = '✅ コピーしました';
+        btn.style.background = '#28a745';
+        setTimeout(() => {
+          btn.textContent = originalText;
+          btn.style.background = '#4285f4';
+        }, 2000);
       }
     }
 
