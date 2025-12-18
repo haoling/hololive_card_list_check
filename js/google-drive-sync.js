@@ -943,8 +943,46 @@
         }
       }
 
-      // ログインしていない場合は公開URLで直接取得を試みる
+      // ログインしていない場合はAPIキーまたは公開URLで直接取得を試みる
       try {
+        // まずAPIキーを使ってGoogle Drive API v3で取得を試みる
+        if (window.GOOGLE_API_KEY) {
+          try {
+            console.log('[GoogleDriveSync] APIキーで読み込み試行中...');
+
+            const apiUrl = `https://www.googleapis.com/drive/v3/files/${cleanFileId}?alt=media&key=${window.GOOGLE_API_KEY}`;
+
+            const apiResponse = await fetch(apiUrl, {
+              method: 'GET',
+              headers: {
+                'Accept': 'application/json'
+              }
+            });
+
+            if (apiResponse.ok) {
+              const fileData = await apiResponse.json();
+
+              // データの妥当性チェック
+              if (!fileData || typeof fileData !== 'object') {
+                throw new Error('ファイルのデータ形式が不正です');
+              }
+
+              console.log('[GoogleDriveSync] 他人のストレイジ読み込み成功（APIキー）');
+
+              return {
+                success: true,
+                data: fileData,
+                message: 'success'
+              };
+            } else {
+              console.log(`[GoogleDriveSync] APIキーでのアクセス失敗（${apiResponse.status}）、公開URLで再試行します`);
+            }
+          } catch (apiError) {
+            console.log('[GoogleDriveSync] APIキーでのアクセスエラー、公開URLで再試行します:', apiError);
+          }
+        }
+
+        // APIキーでの取得が失敗した場合、公開URLで取得を試みる
         console.log('[GoogleDriveSync] 公開URLで読み込み試行中...');
 
         // Google Driveの公開ファイルダウンロードURL
