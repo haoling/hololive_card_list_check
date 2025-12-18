@@ -7,11 +7,11 @@ const VERSION_DESCRIPTION = "クエリストリングからの閲覧モード開
 // ✅ 各ページのバージョン情報を一元管理
 const PAGE_VERSIONS = {
   "index.html": "4.17.1",
-  "binder_collection.html": "4.15.1",
-  "collection_binder.html": "4.15.1",
-  "card_list.html": "4.15.1",
-  "holoca_skill_page.html": "4.15.1",
-  "deck_builder.html": "4.15.1"
+  "binder_collection.html": "4.17.1",
+  "collection_binder.html": "4.17.1",
+  "card_list.html": "4.17.1",
+  "holoca_skill_page.html": "4.17.1",
+  "deck_builder.html": "4.17.1"
 };
 
 // ✅ 更新内容の詳細情報
