@@ -5,8 +5,8 @@
 //   - PAGE_VERSIONS は APP_VERSION から自動生成（手書きしない）
 //   ※ sw.js 本体のバージョンコメントも合わせて更新するとSW更新検知が最速（sw.js のバイト差分）
 
-const APP_VERSION = "4.22.0";
-const VERSION_DESCRIPTION = "upstream(ikachan-desuyo)を取り込み: バトルシミュレーターv2・カードデータ更新";
+const APP_VERSION = "4.23.0";
+const VERSION_DESCRIPTION = "カードデータ(card_data.json)を更新";
 
 // ✅ 対象ページ一覧（バージョンは APP_VERSION に統一＝単一ソース。手書きの個別バージョンは持たない）
 const VERSIONED_PAGES = [
@@ -24,11 +24,7 @@ const UPDATE_DETAILS = {
   title: `v${APP_VERSION}`,
   description: VERSION_DESCRIPTION,
   changes: [
-    "upstream(ikachan-desuyo/hololive_card_list_check)のバトルシミュレーターv2（オンライン対戦・リプレイ機能）を追加",
-    "カードデータ(card_data.json)をupstreamの最新データで更新",
-    "バージョン番号を sw-version.js の APP_VERSION に一本化（単一ソース）",
-    "各ページの表示バージョンを実行時に APP_VERSION から描画",
-    "Google Drive同期・読み取り専用モードなど既存機能はそのまま維持"
+    "カードデータ(card_data.json)を最新データで更新"
   ]
 };
 
