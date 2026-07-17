@@ -731,7 +731,7 @@ function setViewMode(mode) {
   function performRender() {
     // 半角スペースと全角スペースで分割してAND検索用の配列を作成
     const searchText = document.getElementById("nameSearch").value;
-    const keywords = searchText.split(/[\s　]+/).filter(k => k).map(k => window.normalizeText(k));
+    const keywords = searchText.split(/[\s　]+/).filter(k => k).map(k => window.normalizeSearchKey(k));
     const getChecked = id => [...document.querySelectorAll(`#${id} input:checked`)].map(el => el.value);
     const ownedStates = getCheckedFromChips("ownedStateChipGroup");
     const rarity = getCheckedFromChips("rarityFilter");
@@ -754,9 +754,9 @@ function setViewMode(mode) {
 
       const match = {
         name: keywords.length === 0 || keywords.every(kw =>
-              window.normalizeText(card.name).includes(kw) ||
-              window.normalizeText(card.id || '').includes(kw) ||
-              window.normalizeText(card.number || '').includes(kw)),
+              window.normalizeSearchKey(card.name).includes(kw) ||
+              window.normalizeSearchKey(card.id || '').includes(kw) ||
+              window.normalizeSearchKey(card.number || '').includes(kw)),
         rarity: rarity.length === 0 || rarity.includes(card.rarity),
         color: color.length === 0 || color.includes(card.color),
         bloom: bloom.length === 0 || bloom.includes(card.bloom),
