@@ -5,8 +5,8 @@
 //   - PAGE_VERSIONS は APP_VERSION から自動生成（手書きしない）
 //   ※ sw.js 本体のバージョンコメントも合わせて更新するとSW更新検知が最速（sw.js のバイト差分）
 
-const APP_VERSION = "4.23.1";
-const VERSION_DESCRIPTION = "card_list.htmlのSW登録にupdateViaCache:noneが未指定だった不具合を修正";
+const APP_VERSION = "4.24.0";
+const VERSION_DESCRIPTION = "カード一覧の検索でハイフン等の記号を無視してカード番号を検索できるように改善";
 
 // ✅ 対象ページ一覧（バージョンは APP_VERSION に統一＝単一ソース。手書きの個別バージョンは持たない）
 const VERSIONED_PAGES = [
@@ -24,7 +24,7 @@ const UPDATE_DETAILS = {
   title: `v${APP_VERSION}`,
   description: VERSION_DESCRIPTION,
   changes: [
-    "card_list.html の Service Worker 登録に updateViaCache: 'none' が抜けており、sw-version.js がHTTPキャッシュから古いまま読まれてカードデータのキャッシュが更新されないことがある不具合を修正"
+    "カード一覧ページの検索ボックスで、カード番号のハイフンなどの記号を無視して検索できるように改善（例: 「08085」と入力しても「hBP08-085」がヒットする）"
   ]
 };
 
