@@ -53,6 +53,16 @@ window.normalizeText = function(text) {
 };
 
 /**
+ * カード番号検索用の正規化関数（normalizeText に加えて記号を除去）
+ * 例: "hBP08-085" と "hbp08085" が同一視できるようにする
+ * @param {string} text - 正規化するテキスト
+ * @returns {string} 正規化されたテキスト（英数字・かな漢字以外の記号を除去）
+ */
+window.normalizeSearchKey = function(text) {
+  return window.normalizeText(text).replace(/[^\p{L}\p{N}]/gu, '');
+};
+
+/**
  * ダークモード切り替え関数
  * 複数ページで使用されるダークモード機能
  */

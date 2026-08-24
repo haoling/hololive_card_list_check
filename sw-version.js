@@ -5,8 +5,10 @@
 //   - PAGE_VERSIONS は APP_VERSION から自動生成（手書きしない）
 //   ※ sw.js 本体のバージョンコメントも合わせて更新するとSW更新検知が最速（sw.js のバイト差分）
 
-const APP_VERSION = "4.22.1";
+const APP_VERSION = "4.24.1";
 const VERSION_DESCRIPTION = "カードデータ更新";
+const APP_VERSION = "4.24.0";
+const VERSION_DESCRIPTION = "カード一覧の検索でハイフン等の記号を無視してカード番号を検索できるように改善";
 
 // ✅ 対象ページ一覧（バージョンは APP_VERSION に統一＝単一ソース。手書きの個別バージョンは持たない）
 const VERSIONED_PAGES = [
@@ -24,11 +26,7 @@ const UPDATE_DETAILS = {
   title: `v${APP_VERSION}`,
   description: VERSION_DESCRIPTION,
   changes: [
-    "upstream(ikachan-desuyo/hololive_card_list_check)のバトルシミュレーターv2（オンライン対戦・リプレイ機能）を追加",
-    "カードデータ(card_data.json)をupstreamの最新データで更新",
-    "バージョン番号を sw-version.js の APP_VERSION に一本化（単一ソース）",
-    "各ページの表示バージョンを実行時に APP_VERSION から描画",
-    "Google Drive同期・読み取り専用モードなど既存機能はそのまま維持"
+    "カード一覧ページの検索ボックスで、カード番号のハイフンなどの記号を無視して検索できるように改善（例: 「08085」と入力しても「hBP08-085」がヒットする）"
   ]
 };
 
