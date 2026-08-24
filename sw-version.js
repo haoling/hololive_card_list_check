@@ -7,8 +7,6 @@
 
 const APP_VERSION = "4.24.1";
 const VERSION_DESCRIPTION = "カードデータ更新";
-const APP_VERSION = "4.24.0";
-const VERSION_DESCRIPTION = "カード一覧の検索でハイフン等の記号を無視してカード番号を検索できるように改善";
 
 // ✅ 対象ページ一覧（バージョンは APP_VERSION に統一＝単一ソース。手書きの個別バージョンは持たない）
 const VERSIONED_PAGES = [
