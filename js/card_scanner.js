@@ -19,6 +19,19 @@
  * 4パターンそれぞれでハッシュ計算し、DB全体と照合して最良の候補を採用することで吸収する。
  * それ以外の任意角度の傾きは、画面上のガイド枠にユーザーがカードの縁を合わせる前提とし、
  * エッジ検出や射影変換による完全なデスキュー補正はスコープ外としている。
+ *
+ * スケール（ガイド枠とのフィット具合）について: カードがガイド枠より小さく写る（背景が
+ * 写り込む）場合や、逆に枠からはみ出して大きく写る場合も認識精度が落ちる。これも回転と同じ
+ * 「複数の仮説を試して最良の一致を採用する」方式で吸収する。ガイド矩形の中心を固定したまま
+ * SCALE_FACTORS倍したいくつかの矩形を切り出し候補とし、それぞれで0/90/180/270度のハッシュを
+ * 計算してDB全体と照合する。
+ * 注意: 実測したところ、背景とカードの境界（特にガイド枠の外が単色に近い場合）付近の
+ * ハッシュビットはスケールのズレに非常に敏感で、正解スケールから数%（5〜7%程度）ずれただけで
+ * ハミング距離が20台→50台まで悪化することを確認した。そのため粗い刻み（例: 10%刻み）では
+ * 実質ほとんど許容度が得られず、2.5%刻み程度の細かい格子でないと「多少のズレ」を実際には
+ * 吸収できない。SCALE_FACTORSはこの実測に基づき ±10% を2.5%刻みでカバーする9パターンにしている
+ * （試す仮説の数が増える分、無関係なカードの最小距離もわずかに下がりやすくなるが、候補を
+ * 複数表示して人間が選ぶ設計が前提のため許容している）。
  */
 (function () {
   'use strict';
@@ -29,6 +42,10 @@
   const SCAN_INTERVAL_MS = 500;
   const CARD_ASPECT = 63 / 88; // TCG標準カードサイズ（幅mm / 高さmm）
   const CAPTURE_SCALE = 3; // ガイド矩形を切り出す中間バッファの解像度倍率（63*3 x 88*3 px）
+  // ガイド枠とのフィット許容度（中心固定で±10%、2.5%刻み）。
+  // 10%刻み(0.8/0.9/1.0/1.1/1.2)では実質ほぼ許容度が得られないことを実測済みのため、この粒度にしている。
+  // 9パターン×4回転=36回のハッシュ計算/スキャンになる点に注意（実機で重ければ間引きを検討）。
+  const SCALE_FACTORS = [0.90, 0.925, 0.95, 0.975, 1.0, 1.025, 1.05, 1.075, 1.10];
   const TOP_N = 5;
   const AUTO_CONFIRM_MAX_DISTANCE = 40; // 256bit中。この値以下なら「ほぼ確実に一致」とみなす候補とする
   const AUTO_CONFIRM_MARGIN = 20; // 1位と2位のハミング距離差がこれ以上あれば自動確定候補とする
@@ -347,7 +364,22 @@
     const sy = (guideRect.top - videoRect.top + offsetY) / scale;
     const sw = guideRect.width / scale;
     const sh = guideRect.height / scale;
-    return { sx: sx, sy: sy, sw: sw, sh: sh };
+    return { sx: sx, sy: sy, sw: sw, sh: sh, vw: vw, vh: vh };
+  }
+
+  // ガイド矩形の中心を固定したまま factor 倍したサイズの矩形を返す
+  // （カードがガイド枠より大きく/小さく写っている場合の許容度を持たせるため）
+  function scaleRectAroundCenter(rect, factor) {
+    const cx = rect.sx + rect.sw / 2;
+    const cy = rect.sy + rect.sh / 2;
+    const sw = rect.sw * factor;
+    const sh = rect.sh * factor;
+    return { sx: cx - sw / 2, sy: cy - sh / 2, sw: sw, sh: sh };
+  }
+
+  // スケール後の矩形が映像フレームの範囲内に収まっているか
+  function isRectWithinBounds(rect, vw, vh) {
+    return rect.sx >= 0 && rect.sy >= 0 && rect.sx + rect.sw <= vw && rect.sy + rect.sh <= vh;
   }
 
   function captureGuideToCanvas(sourceRect) {
@@ -387,12 +419,20 @@
     if (!phashEntries || phashEntries.length === 0) return;
     if (document.getElementById('detailPanel').style.display === 'block') return;
 
-    const sourceRect = getSourceRectFromGuide();
-    if (!sourceRect || sourceRect.sw <= 0 || sourceRect.sh <= 0) return;
+    const baseRect = getSourceRectFromGuide();
+    if (!baseRect || baseRect.sw <= 0 || baseRect.sh <= 0) return;
 
-    const captureCanvas = captureGuideToCanvas(sourceRect);
-    const hashesForRotations = computeHashesForRotations(captureCanvas);
-    const candidates = findCandidates(hashesForRotations);
+    const allHashes = [];
+    SCALE_FACTORS.forEach(function (factor) {
+      const rect = factor === 1.0 ? baseRect : scaleRectAroundCenter(baseRect, factor);
+      if (!isRectWithinBounds(rect, baseRect.vw, baseRect.vh)) return;
+      const captureCanvas = captureGuideToCanvas(rect);
+      const hashesForRotations = computeHashesForRotations(captureCanvas);
+      allHashes.push.apply(allHashes, hashesForRotations);
+    });
+    if (allHashes.length === 0) return;
+
+    const candidates = findCandidates(allHashes);
 
     renderCandidates(candidates);
 
