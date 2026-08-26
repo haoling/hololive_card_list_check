@@ -32,6 +32,9 @@ function updateViewModeButton() {
   // ==== カード詳細ナビゲーション用（一覧ページ用） ====
   let currentDisplayList = []; // 現在のフィルター・ソート後の全カード（renderLimit での表示制限前）
   let currentModalIndex = -1;  // モーダルで現在表示中のカードのインデックス
+  // ==== 枚数の増減UI用 ====
+  const editingCounts = new Set(); // 現在「増減」モード中のカードID
+  const pendingCounts = new Map(); // 編集中の一時的な枚数（保存前）
 
       const ownedLabelMap = {
         owned: "所持あり",
@@ -799,7 +802,17 @@ function setViewMode(mode) {
             <td>${card.color}</td>
             <td>${bloomText}</td>
             <td>${card.hp ?? "-"}</td>
-            <td><input type="number" min="0" value="${card.owned}" onchange="updateOwned('${card.id}', this.value)" aria-label="${card.name}の所持枚数"></td>
+            <td>${editingCounts.has(card.id) ? `
+              <div class="count-value">${pendingCounts.get(card.id)}</div>
+              <div class="count-edit-controls">
+                <button type="button" onclick="adjustPendingCount('${card.id}', -1)" aria-label="${card.name}を1枚減らす">－</button>
+                <button type="button" onclick="adjustPendingCount('${card.id}', 1)" aria-label="${card.name}を1枚増やす">＋</button>
+              </div>
+              <button type="button" class="count-toggle-btn" onclick="saveCount('${card.id}')" aria-label="${card.name}の所持枚数を保存">保存</button>
+            ` : `
+              <div class="count-value">${card.owned}</div>
+              <button type="button" class="count-toggle-btn" onclick="toggleCountEdit('${card.id}')" aria-label="${card.name}の所持枚数を編集">増減</button>
+            `}</td>
           `;
           tbody.appendChild(row);
         });      // ✅ フィルター後全件の統計を表示
@@ -856,6 +869,33 @@ function setViewMode(mode) {
       `所持枚数：${ownedCount} / 表示：${displayCards.length}/${shown}種類 / 所持種類数：${ownedTypes}(${ratio}%)`;
     document.getElementById("typeDisplay").textContent = "";
   // 旧: さらに表示ボタン制御は削除済
+  }
+
+  function toggleCountEdit(id) {
+    // 読み取り専用モードチェック
+    if (window.readOnlyMode && window.readOnlyMode.isEnabled()) {
+      window.readOnlyMode.showWarning('カード所持数の変更');
+      return;
+    }
+
+    const card = cards.find(c => c.id === id);
+    if (!card) return;
+    pendingCounts.set(id, card.owned ?? 0);
+    editingCounts.add(id);
+    renderTable();
+  }
+
+  function adjustPendingCount(id, delta) {
+    const current = pendingCounts.get(id) ?? 0;
+    pendingCounts.set(id, Math.max(0, current + delta));
+    renderTable();
+  }
+
+  function saveCount(id) {
+    const value = pendingCounts.get(id) ?? 0;
+    editingCounts.delete(id);
+    pendingCounts.delete(id);
+    updateOwned(id, value);
   }
 
   function updateOwned(id, value) {
