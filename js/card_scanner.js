@@ -508,6 +508,12 @@
 
   // ---- 候補一覧 UI ----
 
+  // ハミング距離をマッチ度(%)に変換する。0距離=100%、CANDIDATE_MAX_DISTANCE=0% で線形に割り付ける
+  // （それより遠い候補はそもそも一覧に出さないため、この範囲だけを0〜100%で表現する）。
+  function distanceToMatchPercent(distance) {
+    return Math.max(0, Math.min(100, Math.round((1 - distance / CANDIDATE_MAX_DISTANCE) * 100)));
+  }
+
   function renderCandidates(candidates) {
     const container = document.getElementById('candidateList');
     if (!container) return;
@@ -518,15 +524,19 @@
     container.innerHTML = candidates
       .map(function (entry) {
         const id = entry[0];
+        const distance = entry[1];
         const card = cardDataMap[id];
         if (!card) return '';
+        const matchPercent = distanceToMatchPercent(distance);
         return (
           '<div class="candidate-card" data-id="' + escapeHtml(id) + '">' +
           '<img src="' + escapeHtml(card.image_url) + '" alt="' + escapeHtml(card.name || '') + '" loading="lazy" />' +
           '<div class="candidate-info">' +
           '<div class="candidate-name">' + escapeHtml(card.name || '') + '</div>' +
           '<div class="candidate-meta">' + escapeHtml(card.number || '') + ' ' + escapeHtml(card.rarity || '') + '</div>' +
-          '</div></div>'
+          '</div>' +
+          '<div class="candidate-score">マッチ度<br>' + matchPercent + '%</div>' +
+          '</div>'
         );
       })
       .join('');
