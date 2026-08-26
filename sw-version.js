@@ -5,8 +5,8 @@
 //   - PAGE_VERSIONS は APP_VERSION から自動生成（手書きしない）
 //   ※ sw.js 本体のバージョンコメントも合わせて更新するとSW更新検知が最速（sw.js のバイト差分）
 
-const APP_VERSION = "4.28.0";
-const VERSION_DESCRIPTION = "カードスキャン画面にGoogle Drive同期を追加";
+const APP_VERSION = "4.28.1";
+const VERSION_DESCRIPTION = "カード一覧のモバイル表示でログイン中もGoogleログインボタンが消えない不具合を修正";
 
 // ✅ 対象ページ一覧（バージョンは APP_VERSION に統一＝単一ソース。手書きの個別バージョンは持たない）
 const VERSIONED_PAGES = [
@@ -25,7 +25,7 @@ const UPDATE_DETAILS = {
   title: `v${APP_VERSION}`,
   description: VERSION_DESCRIPTION,
   changes: [
-    "カードスキャン画面に他ページと同じGoogle Drive同期を追加し、詳細画面での所持枚数変更がDriveに保存されない不具合を修正"
+    "カード一覧画面のモバイル表示で、Googleにログイン中でもヘッダーにGoogleログインボタン（Gロゴ）が残ってしまう不具合を修正"
   ]
 };
 

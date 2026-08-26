@@ -60,6 +60,11 @@
 }
 
 /* Googleログインボタン */
+/* 表示/非表示はコンテナの .signed-in クラスで一括制御する（サインイン中はログインボタンを隠す） */
+.google-drive-sync-container.signed-in .google-signin-btn {
+  display: none;
+}
+
 .google-signin-btn {
   display: flex;
   align-items: center;
@@ -89,8 +94,9 @@
   flex-shrink: 0;
 }
 
-/* ログアウトボタン */
+/* ログアウトボタン（サインイン中のみ .signed-in で表示） */
 .google-signout-btn {
+  display: none;
   padding: 6px 12px;
   border: 1px solid #dadce0;
   border-radius: 4px;
@@ -99,6 +105,10 @@
   font-size: 12px;
   cursor: pointer;
   transition: all 0.2s ease;
+}
+
+.google-drive-sync-container.signed-in .google-signout-btn {
+  display: inline-block;
 }
 
 .google-signout-btn:hover {
@@ -518,11 +528,5 @@ body.dark .sync-action-btn.warning:hover {
   .primary-btn,
   .secondary-btn {
     width: 100%;
-  }
-}
-
-@media (max-width: 480px) {
-  .sync-status {
-    display: none;
   }
 }
