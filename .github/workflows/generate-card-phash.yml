@@ -3,10 +3,11 @@ name: カード画像ハッシュDB生成
 on:
   workflow_dispatch: {}
   push:
-    branches: [main]
+    branches: [main, claude/card-camera-recognition-mlj849] # TODO: マージ前のテスト用。確認後 [main] に戻すこと
     paths:
       - "json_file/card_data.json"
       - "scripts/tools/generate_card_phash.py"
+      - ".github/workflows/generate-card-phash.yml" # TODO: マージ前のテスト用。確認後この行も削除すること
 
 # 同じブランチへの多重実行を避ける（画像ダウンロードは時間がかかるため）
 concurrency:
