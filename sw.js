@@ -1,5 +1,5 @@
 // Service Worker for offline caching with centralized version management
-// Version: 4.24.0
+// Version: 4.25.0
 // 注意: バージョンアップ時は sw-version.js と合わせてこのコメントも更新すること。
 // （SWの更新検知は sw.js 本体のバイト差分が最速・最確実。importScripts の
 //   sw-version.js だけの変更だと、環境によって検知がHTTPキャッシュのTTL分遅れる）
@@ -19,6 +19,7 @@ const urlsToCache = [
   './binder_collection.html',
   './holoca_skill_page.html',
   './deck_builder.html',
+  './card_scanner.html',
   './css/collection_binder.css',
   './css/binder_collection.css',
   './css/card_list.css',
@@ -29,6 +30,7 @@ const urlsToCache = [
   './js/card_list.js',
   './js/deck_builder.js',
   './js/holoca_skill_page.js',
+  './js/card_scanner.js',
   './js/utils.js',
   './config/google-client-id.js',
   './js/google-drive-sync.js',
