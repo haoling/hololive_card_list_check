@@ -730,9 +730,16 @@ th, td {
   vertical-align: top;
 }
 
-input[type="number"] {
-  width: 32px;
+.count-value {
   text-align: center;
+  font-weight: bold;
+}
+
+.count-edit-controls {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  margin: 4px 0;
 }
 
 img {
