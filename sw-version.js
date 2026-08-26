@@ -5,8 +5,8 @@
 //   - PAGE_VERSIONS は APP_VERSION から自動生成（手書きしない）
 //   ※ sw.js 本体のバージョンコメントも合わせて更新するとSW更新検知が最速（sw.js のバイト差分）
 
-const APP_VERSION = "4.24.1";
-const VERSION_DESCRIPTION = "カードデータ更新";
+const APP_VERSION = "4.25.0";
+const VERSION_DESCRIPTION = "カードスキャン機能追加";
 
 // ✅ 対象ページ一覧（バージョンは APP_VERSION に統一＝単一ソース。手書きの個別バージョンは持たない）
 const VERSIONED_PAGES = [
@@ -15,7 +15,8 @@ const VERSIONED_PAGES = [
   "collection_binder.html",
   "card_list.html",
   "holoca_skill_page.html",
-  "deck_builder.html"
+  "deck_builder.html",
+  "card_scanner.html"
 ];
 const PAGE_VERSIONS = Object.fromEntries(VERSIONED_PAGES.map((p) => [p, APP_VERSION]));
 
@@ -24,7 +25,7 @@ const UPDATE_DETAILS = {
   title: `v${APP_VERSION}`,
   description: VERSION_DESCRIPTION,
   changes: [
-    "カード一覧ページの検索ボックスで、カード番号のハイフンなどの記号を無視して検索できるように改善（例: 「08085」と入力しても「hBP08-085」がヒットする）"
+    "カメラでカードの絵柄を読み取り、一致するカードを検索する「カードスキャン」機能を追加"
   ]
 };
 

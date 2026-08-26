@@ -1,0 +1,46 @@
+name: カード画像ハッシュDB生成
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - "json_file/card_data.json"
+      - "scripts/tools/generate_card_phash.py"
+
+# 同じブランチへの多重実行を避ける（画像ダウンロードは時間がかかるため）
+concurrency:
+  group: generate-card-phash-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install dependencies
+        run: pip install Pillow imagehash
+
+      - name: Generate card_phash.json
+        run: python scripts/tools/generate_card_phash.py
+
+      - name: Commit and push if changed
+        run: |
+          if git diff --quiet -- json_file/card_phash.json; then
+            echo "No changes to card_phash.json"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add json_file/card_phash.json
+          git commit -m "chore: update card_phash.json"
+          git push

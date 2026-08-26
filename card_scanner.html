@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="ja">
+<!-- Version: sw-version.js の APP_VERSION が単一ソース（このコメントは表示・更新検知には使われません） -->
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>カードスキャン</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: #333;
+    }
+
+    .container {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 12px;
+      padding: 10px 14px;
+      margin-bottom: 14px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .top-bar h1 {
+      font-size: 1.1em;
+      margin: 0;
+      background: linear-gradient(45deg, #667eea, #764ba2);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-weight: bold;
+    }
+
+    .top-bar button {
+      border: none;
+      border-radius: 8px;
+      padding: 6px 10px;
+      background: #eef0fb;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .status-message {
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 14px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .status-error { background: #fdecea; color: #a94442; }
+    .status-info { background: #eef0fb; color: #33366f; }
+
+    .scanner-area {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+      margin-bottom: 14px;
+    }
+
+    .video-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 3 / 4;
+      background: #111;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    #video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .guide-box {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 62%;
+      aspect-ratio: 63 / 88;
+      transform: translate(-50%, -50%);
+      border: 3px solid rgba(255, 255, 255, 0.85);
+      border-radius: 10px;
+      box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.35);
+      pointer-events: none;
+    }
+
+    .scanner-controls {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .scanner-controls button {
+      flex: 1;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 8px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    #shutterBtn {
+      background: linear-gradient(45deg, #667eea, #764ba2);
+      color: #fff;
+    }
+
+    #toggleScanBtn {
+      background: #eef0fb;
+      color: #33366f;
+    }
+
+    .candidate-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .candidate-empty {
+      text-align: center;
+      color: rgba(255, 255, 255, 0.85);
+      font-size: 14px;
+      padding: 10px;
+    }
+
+    .candidate-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 10px;
+      padding: 8px 10px;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .candidate-card img {
+      width: 42px;
+      height: 58px;
+      object-fit: cover;
+      border-radius: 4px;
+      flex-shrink: 0;
+      background: #ddd;
+    }
+
+    .candidate-name {
+      font-weight: bold;
+      font-size: 14px;
+    }
+
+    .candidate-meta {
+      font-size: 12px;
+      color: #666;
+    }
+
+    .detail-panel {
+      display: none;
+      background: rgba(255, 255, 255, 0.97);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+    }
+
+    .detail-header {
+      margin-bottom: 10px;
+    }
+
+    .detail-close {
+      border: none;
+      background: #eef0fb;
+      color: #33366f;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .detail-body {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .detail-image {
+      width: 140px;
+      border-radius: 10px;
+      flex-shrink: 0;
+    }
+
+    .detail-info {
+      flex: 1;
+      min-width: 180px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .detail-info h2 {
+      margin: 0 0 8px 0;
+      font-size: 18px;
+      color: #667eea;
+    }
+
+    .detail-row {
+      margin-bottom: 6px;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 8px;
+      font-size: 12px;
+    }
+
+    .detail-tags {
+      margin: 8px 0;
+    }
+
+    .tag-chip {
+      display: inline-block;
+      background: #667eea;
+      color: #fff;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      margin: 2px 4px 2px 0;
+    }
+
+    .detail-skills {
+      margin-top: 10px;
+      border-top: 1px solid #ddd;
+      padding-top: 10px;
+    }
+
+    .skill-item {
+      margin-bottom: 10px;
+      font-size: 13px;
+    }
+
+    .skill-none {
+      font-size: 13px;
+      color: #999;
+    }
+
+    .detail-link {
+      margin-top: 10px;
+      text-align: right;
+    }
+
+    .detail-link a {
+      color: #667eea;
+      font-size: 12px;
+      text-decoration: none;
+    }
+
+    /* ダークモード */
+    body.dark { background: linear-gradient(135deg, #1b1f2a 0%, #2b1f3a 100%); }
+    body.dark .top-bar,
+    body.dark .scanner-area,
+    body.dark .candidate-card,
+    body.dark .detail-panel {
+      background: rgba(30, 32, 45, 0.95);
+      color: #ecf0f1;
+    }
+    body.dark .top-bar button,
+    body.dark #toggleScanBtn,
+    body.dark .detail-close {
+      background: #2a2d42;
+      color: #ecf0f1;
+    }
+    body.dark .candidate-meta { color: #aaa; }
+    body.dark .detail-skills { border-top-color: #444; }
+    body.dark .status-info { background: #2a2d42; color: #dfe3ff; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="top-bar">
+      <button onclick="goHome()">🏠 ホーム</button>
+      <h1>📷 カードスキャン
+        <span style="font-size: 0.6em; color: #999; font-weight: normal;" id="versionDisplay"></span>
+      </h1>
+      <button onclick="toggleDarkMode()">🌗</button>
+    </div>
+
+    <div id="statusMessage" class="status-message" style="display:none;"></div>
+
+    <div id="scannerArea" class="scanner-area">
+      <div class="video-wrap">
+        <video id="video" playsinline muted autoplay></video>
+        <div id="guideBox" class="guide-box"></div>
+      </div>
+      <div class="scanner-controls">
+        <button id="shutterBtn">📸 このコマで検索</button>
+        <button id="toggleScanBtn">⏸ 自動スキャン停止</button>
+      </div>
+      <p style="font-size:12px; color:#666; margin: 10px 4px 0;">
+        カードをガイド枠いっぱいに合わせてください。絵柄が一致する候補が下に表示されます。
+      </p>
+    </div>
+
+    <div id="candidateList" class="candidate-list"></div>
+
+    <div id="detailPanel" class="detail-panel"></div>
+  </div>
+
+  <script src="./sw-version.js"></script>
+  <script src="./js/offline-utils.js"></script>
+  <script src="./js/utils.js"></script>
+  <script src="./js/card_scanner.js"></script>
+</body>
+</html>
