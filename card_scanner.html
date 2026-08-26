@@ -8,6 +8,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>カードスキャン</title>
+  <link rel="stylesheet" href="css/google-drive-sync.css">
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -397,5 +398,14 @@
   <script src="./js/offline-utils.js"></script>
   <script src="./js/utils.js"></script>
   <script src="./js/card_scanner.js"></script>
+  <!-- Google Drive同期 -->
+  <script src="config/google-client-id.js"></script>
+  <script src="js/google-drive-sync.js"></script>
+  <script>
+    // Google Drive同期UIを初期化
+    document.addEventListener('DOMContentLoaded', function() {
+      window.initializeGoogleDriveSync('.top-bar');
+    });
+  </script>
 </body>
 </html>
