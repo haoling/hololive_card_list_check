@@ -412,7 +412,7 @@ window.googleDriveUI = {
         </svg>
         <span class="signin-text">ログイン</span>
       </button>
-      <button id="google-signout-btn" class="google-signout-btn" style="display: none;" title="ログアウト">
+      <button id="google-signout-btn" class="google-signout-btn" title="ログアウト">
         ログアウト
       </button>
     `;
@@ -424,6 +424,9 @@ window.googleDriveUI = {
     } else {
       headerElement.appendChild(container);
     }
+
+    // 初期状態を明示的に確定させる（HTMLの初期マークアップに依存しない）
+    this.updateUIState(false);
 
     this.setupEventListeners();
     this.setupGoogleDriveEvents();
@@ -474,12 +477,13 @@ window.googleDriveUI = {
    * UI状態を更新
    */
   updateUIState: function(signedIn) {
-    const signinBtn = document.getElementById('google-signin-btn');
-    const signoutBtn = document.getElementById('google-signout-btn');
+    // ログイン/ログアウトボタンの表示はコンテナのクラス1つで一括制御する
+    // （ボタンごとにstyle.displayを個別に切り替えると、片方の要素取得に失敗した場合などに
+    // 「ログインボタンとログアウトボタンが両方表示される」不整合が起こり得るため）
+    const container = document.getElementById('google-drive-sync-container');
     const syncStatus = document.getElementById('sync-status');
 
-    if (signinBtn) signinBtn.style.display = signedIn ? 'none' : 'flex';
-    if (signoutBtn) signoutBtn.style.display = signedIn ? 'inline-block' : 'none';
+    if (container) container.classList.toggle('signed-in', !!signedIn);
 
     if (syncStatus) {
       if (signedIn) {

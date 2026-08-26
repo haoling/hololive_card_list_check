@@ -581,8 +581,11 @@ h2 {
   min-width: 0;
 }
 
-/* CSV機能ボタンを確実に表示 */
-.mobile-layout .top-controls-row button {
+/* CSV機能ボタンを確実に表示（他の行のボタンには影響させない。
+   .top-controls-row button だと動的挿入されるGoogle Drive同期ボタン等
+   まで !important で強制表示してしまい、サインイン中でもログインボタンの
+   Googleロゴが消せなくなる不具合があった） */
+.mobile-layout .top-controls-row.csv-row button {
   display: block !important;
   visibility: visible !important;
   font-size: 16px;
