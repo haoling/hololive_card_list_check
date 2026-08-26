@@ -237,6 +237,49 @@
       margin-bottom: 6px;
     }
 
+    .detail-quantity {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .qty-control {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .qty-btn {
+      width: 28px;
+      height: 28px;
+      border: none;
+      border-radius: 50%;
+      background: #667eea;
+      color: #fff;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      line-height: 1;
+      padding: 0;
+    }
+
+    .qty-btn:active {
+      background: #5567d1;
+    }
+
+    .qty-btn:disabled {
+      background: #b7bdd8;
+      cursor: not-allowed;
+    }
+
+    .qty-value {
+      min-width: 22px;
+      text-align: center;
+      font-size: 16px;
+      font-weight: bold;
+    }
+
     .detail-grid {
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;

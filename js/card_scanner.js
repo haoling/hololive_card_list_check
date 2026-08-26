@@ -565,6 +565,44 @@
     recentCandidates.clear();
   }
 
+  // ---- 所持枚数 ----
+  // card_list.html と同じ localStorage キー（"count_" + カードID）を共有する。
+  // 閲覧モード中は window.storageProvider 経由で読み取り、書き込みは readOnlyMode で弾かれる。
+
+  function getOwnedCount(id) {
+    if (window.storageProvider && typeof window.storageProvider.getCardCount === 'function') {
+      return window.storageProvider.getCardCount(id);
+    }
+    return parseInt(localStorage.getItem('count_' + id) || '0', 10);
+  }
+
+  function setOwnedCount(id, num) {
+    if (window.readOnlyMode && window.readOnlyMode.isEnabled()) {
+      window.readOnlyMode.showWarning('カード所持数の変更');
+      return false;
+    }
+    localStorage.setItem('count_' + id, Math.max(0, num));
+    return true;
+  }
+
+  function setupQuantityControls(id) {
+    const minusBtn = document.getElementById('qtyMinusBtn');
+    const plusBtn = document.getElementById('qtyPlusBtn');
+    const valueEl = document.getElementById('qtyValue');
+    if (!minusBtn || !plusBtn || !valueEl) return;
+
+    function refresh() {
+      valueEl.textContent = String(getOwnedCount(id));
+    }
+
+    minusBtn.addEventListener('click', function () {
+      if (setOwnedCount(id, getOwnedCount(id) - 1)) refresh();
+    });
+    plusBtn.addEventListener('click', function () {
+      if (setOwnedCount(id, getOwnedCount(id) + 1)) refresh();
+    });
+  }
+
   function renderSkillsSimple(skills) {
     if (!skills || !skills.length) return '<div class="skill-none">スキルなし</div>';
     return skills
@@ -590,6 +628,7 @@
       ? '<div class="detail-tags">' + card.tags.map(function (t) { return '<span class="tag-chip">' + escapeHtml(t) + '</span>'; }).join('') + '</div>'
       : '';
     const skillsHtml = renderSkillsSimple(card.skills);
+    const ownedCount = getOwnedCount(id);
 
     panel.innerHTML =
       '<div class="detail-header"><button class="detail-close" id="detailCloseBtn">← スキャンに戻る</button></div>' +
@@ -597,6 +636,12 @@
       '<img class="detail-image" src="' + escapeHtml(card.image_url) + '" alt="' + escapeHtml(card.name || '') + '" />' +
       '<div class="detail-info">' +
       '<h2>' + escapeHtml(card.name || '') + '</h2>' +
+      '<div class="detail-row detail-quantity"><strong>📥 所持枚数:</strong>' +
+      '<div class="qty-control">' +
+      '<button type="button" class="qty-btn" id="qtyMinusBtn" aria-label="所持枚数を減らす">−</button>' +
+      '<span class="qty-value" id="qtyValue">' + ownedCount + '</span>枚' +
+      '<button type="button" class="qty-btn" id="qtyPlusBtn" aria-label="所持枚数を増やす">＋</button>' +
+      '</div></div>' +
       '<div class="detail-row"><strong>🆔 カード番号:</strong> ' + escapeHtml(id) + '</div>' +
       '<div class="detail-row"><strong>🃏 カードタイプ:</strong> ' + escapeHtml(card.card_type || '不明') + '</div>' +
       '<div class="detail-grid">' +
@@ -612,5 +657,6 @@
       '</div></div>';
 
     document.getElementById('detailCloseBtn').addEventListener('click', closeDetail);
+    setupQuantityControls(id);
   }
 })();
