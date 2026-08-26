@@ -32,6 +32,14 @@
  * 吸収できない。SCALE_FACTORSはこの実測に基づき ±10% を2.5%刻みでカバーする9パターンにしている
  * （試す仮説の数が増える分、無関係なカードの最小距離もわずかに下がりやすくなるが、候補を
  * 複数表示して人間が選ぶ設計が前提のため許容している）。
+ *
+ * 候補一覧の表示について: 500msごとのスキャン結果をその都度置き換えるのではなく、
+ * 直近 CANDIDATE_RETENTION_MS（既定10秒）以内に検出されたカードIDを全て保持し続け、
+ * マッチ度（ハミング距離）の良い順にソートして表示する（recentCandidates / updateRecentCandidates）。
+ * カメラをスイープしている間に一瞬映った候補も逃さず残るようにするための挙動で、
+ * 自動確定（openDetailを呼ぶかどうかの判定）はこのロールバッファとは別に、
+ * 常にその回のスキャン結果のみで判定する（別のカードに向けた直後に、直前まで映っていた
+ * カードで誤確定しないようにするため）。
  */
 (function () {
   'use strict';
@@ -46,11 +54,11 @@
   // 10%刻み(0.8/0.9/1.0/1.1/1.2)では実質ほぼ許容度が得られないことを実測済みのため、この粒度にしている。
   // 9パターン×4回転=36回のハッシュ計算/スキャンになる点に注意（実機で重ければ間引きを検討）。
   const SCALE_FACTORS = [0.90, 0.925, 0.95, 0.975, 1.0, 1.025, 1.05, 1.075, 1.10];
-  const TOP_N = 5;
   const AUTO_CONFIRM_MAX_DISTANCE = 40; // 256bit中。この値以下なら「ほぼ確実に一致」とみなす候補とする
   const AUTO_CONFIRM_MARGIN = 20; // 1位と2位のハミング距離差がこれ以上あれば自動確定候補とする
   const CANDIDATE_MAX_DISTANCE = 90; // これより遠い候補は一覧にも出さない（無関係なノイズを除外）
   const STABILIZE_COUNT = 3; // 自動確定に必要な連続一致回数（フリッカー防止）
+  const CANDIDATE_RETENTION_MS = 10000; // 候補一覧に残し続ける時間（直近何秒分を表示するか）
 
   const CARD_DATA_CACHE_KEY = 'cardData';
   const CARD_DATA_TIMESTAMP_KEY = 'dataTimestamp';
@@ -63,6 +71,7 @@
   let scanTimer = null;
   let lastTopId = null;
   let stableCount = 0;
+  let recentCandidates = new Map(); // id -> { distance, lastSeenAt }（候補一覧の10秒ロールバッファ）
 
   document.addEventListener('DOMContentLoaded', init);
 
@@ -412,7 +421,35 @@
     });
     return sorted.filter(function (entry) {
       return entry[1] <= CANDIDATE_MAX_DISTANCE;
-    }).slice(0, TOP_N);
+    });
+  }
+
+  // 今回のスキャン結果を10秒ロールバッファにマージし、期限切れを間引いた上で
+  // マッチ度（ハミング距離）昇順にソートした一覧を返す。
+  function updateRecentCandidates(candidates, now) {
+    candidates.forEach(function (entry) {
+      const id = entry[0];
+      const dist = entry[1];
+      const prev = recentCandidates.get(id);
+      if (!prev) {
+        recentCandidates.set(id, { distance: dist, lastSeenAt: now });
+      } else {
+        prev.lastSeenAt = now;
+        if (dist < prev.distance) prev.distance = dist;
+      }
+    });
+
+    recentCandidates.forEach(function (value, id) {
+      if (now - value.lastSeenAt > CANDIDATE_RETENTION_MS) recentCandidates.delete(id);
+    });
+
+    return Array.from(recentCandidates.entries())
+      .map(function (entry) {
+        return [entry[0], entry[1].distance];
+      })
+      .sort(function (a, b) {
+        return a[1] - b[1];
+      });
   }
 
   function scanOnce(manual) {
@@ -434,7 +471,7 @@
 
     const candidates = findCandidates(allHashes);
 
-    renderCandidates(candidates);
+    renderCandidates(updateRecentCandidates(candidates, Date.now()));
 
     if (candidates.length === 0) {
       lastTopId = null;
@@ -515,6 +552,7 @@
     document.getElementById('scannerArea').style.display = '';
     lastTopId = null;
     stableCount = 0;
+    recentCandidates.clear();
   }
 
   function renderSkillsSimple(skills) {
