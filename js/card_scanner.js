@@ -57,6 +57,7 @@
   const AUTO_CONFIRM_MAX_DISTANCE = 40; // 256bit中。この値以下なら「ほぼ確実に一致」とみなす候補とする
   const AUTO_CONFIRM_MARGIN = 20; // 1位と2位のハミング距離差がこれ以上あれば自動確定候補とする
   const CANDIDATE_MAX_DISTANCE = 90; // これより遠い候補は一覧にも出さない（無関係なノイズを除外）
+  const MIN_MATCH_PERCENT = 10; // マッチ度（distanceToMatchPercent）がこれ未満は「マッチしていない」として候補から除外
   const STABILIZE_COUNT = 3; // 自動確定に必要な連続一致回数（フリッカー防止）
   const CANDIDATE_RETENTION_MS = 10000; // 候補一覧に残し続ける時間（直近何秒分を表示するか）
 
@@ -405,6 +406,11 @@
 
   // ---- 照合 ----
 
+  // ハミング距離をマッチ度(%)に変換する。0距離=100%、CANDIDATE_MAX_DISTANCE=0% で線形に割り付ける。
+  function distanceToMatchPercent(distance) {
+    return Math.max(0, Math.min(100, Math.round((1 - distance / CANDIDATE_MAX_DISTANCE) * 100)));
+  }
+
   function findCandidates(hashesForRotations) {
     const bestById = new Map();
     hashesForRotations.forEach(function (groups) {
@@ -420,7 +426,7 @@
       return a[1] - b[1];
     });
     return sorted.filter(function (entry) {
-      return entry[1] <= CANDIDATE_MAX_DISTANCE;
+      return distanceToMatchPercent(entry[1]) >= MIN_MATCH_PERCENT;
     });
   }
 
@@ -507,12 +513,6 @@
   }
 
   // ---- 候補一覧 UI ----
-
-  // ハミング距離をマッチ度(%)に変換する。0距離=100%、CANDIDATE_MAX_DISTANCE=0% で線形に割り付ける
-  // （それより遠い候補はそもそも一覧に出さないため、この範囲だけを0〜100%で表現する）。
-  function distanceToMatchPercent(distance) {
-    return Math.max(0, Math.min(100, Math.round((1 - distance / CANDIDATE_MAX_DISTANCE) * 100)));
-  }
 
   function renderCandidates(candidates) {
     const container = document.getElementById('candidateList');
