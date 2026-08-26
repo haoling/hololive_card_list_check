@@ -5,8 +5,8 @@
 //   - PAGE_VERSIONS は APP_VERSION から自動生成（手書きしない）
 //   ※ sw.js 本体のバージョンコメントも合わせて更新するとSW更新検知が最速（sw.js のバイト差分）
 
-const APP_VERSION = "4.26.0";
-const VERSION_DESCRIPTION = "カードスキャン詳細画面に所持枚数調整機能を追加";
+const APP_VERSION = "4.27.0";
+const VERSION_DESCRIPTION = "カードスキャン詳細画面の所持枚数UIをカード一覧と同じ増減方式に統一";
 
 // ✅ 対象ページ一覧（バージョンは APP_VERSION に統一＝単一ソース。手書きの個別バージョンは持たない）
 const VERSIONED_PAGES = [
@@ -25,7 +25,7 @@ const UPDATE_DETAILS = {
   title: `v${APP_VERSION}`,
   description: VERSION_DESCRIPTION,
   changes: [
-    "カードスキャンの詳細画面で所持枚数を＋／−ボタンで増減できるように変更"
+    "カードスキャンの詳細画面の所持枚数編集を、カード一覧と同じ「増減→保存」の2段階UIに変更"
   ]
 };
 

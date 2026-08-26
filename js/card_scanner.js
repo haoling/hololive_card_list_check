@@ -552,6 +552,7 @@
   function openDetail(id) {
     const card = cardDataMap[id];
     if (!card) return;
+    quantityEditingId = null;
     renderDetailPanel(id, card);
     document.getElementById('detailPanel').style.display = 'block';
     document.getElementById('scannerArea').style.display = 'none';
@@ -563,11 +564,18 @@
     lastTopId = null;
     stableCount = 0;
     recentCandidates.clear();
+    quantityEditingId = null;
   }
 
   // ---- 所持枚数 ----
   // card_list.html と同じ localStorage キー（"count_" + カードID）を共有する。
-  // 閲覧モード中は window.storageProvider 経由で読み取り、書き込みは readOnlyMode で弾かれる。
+  // card_list.js（toggleCountEdit/adjustPendingCount/saveCount）と同じ2段階UI：
+  // 「増減」で編集モードに入り、＋／－は保存前の一時値（pendingQuantity）のみを変更、
+  // 「保存」を押すまでlocalStorageには書き込まない（連打のたびの書き込みを防ぐ）。
+  // 詳細パネルは常に1枚のカードしか表示しないため、編集中カードIDは1つだけ保持すればよい。
+
+  let quantityEditingId = null;
+  let pendingQuantity = 0;
 
   function getOwnedCount(id) {
     if (window.storageProvider && typeof window.storageProvider.getCardCount === 'function') {
@@ -585,22 +593,66 @@
     return true;
   }
 
-  function setupQuantityControls(id) {
-    const minusBtn = document.getElementById('qtyMinusBtn');
-    const plusBtn = document.getElementById('qtyPlusBtn');
-    const valueEl = document.getElementById('qtyValue');
-    if (!minusBtn || !plusBtn || !valueEl) return;
-
-    function refresh() {
-      valueEl.textContent = String(getOwnedCount(id));
+  function toggleQuantityEdit(id) {
+    if (window.readOnlyMode && window.readOnlyMode.isEnabled()) {
+      window.readOnlyMode.showWarning('カード所持数の変更');
+      return;
     }
+    quantityEditingId = id;
+    pendingQuantity = getOwnedCount(id);
+    rerenderDetail(id);
+  }
 
-    minusBtn.addEventListener('click', function () {
-      if (setOwnedCount(id, getOwnedCount(id) - 1)) refresh();
-    });
-    plusBtn.addEventListener('click', function () {
-      if (setOwnedCount(id, getOwnedCount(id) + 1)) refresh();
-    });
+  function adjustPendingQuantity(id, delta) {
+    pendingQuantity = Math.max(0, pendingQuantity + delta);
+    rerenderDetail(id);
+  }
+
+  function saveQuantity(id) {
+    if (setOwnedCount(id, pendingQuantity)) {
+      quantityEditingId = null;
+      rerenderDetail(id);
+    }
+  }
+
+  function rerenderDetail(id) {
+    const card = cardDataMap[id];
+    if (card) renderDetailPanel(id, card);
+  }
+
+  function renderQuantityRow(id) {
+    if (quantityEditingId === id) {
+      return (
+        '<div class="detail-row detail-quantity"><strong>📥 所持枚数:</strong>' +
+        '<div class="qty-control">' +
+        '<button type="button" class="qty-btn" id="qtyMinusBtn" aria-label="所持枚数を減らす">−</button>' +
+        '<span class="qty-value" id="qtyValue">' + pendingQuantity + '</span>枚' +
+        '<button type="button" class="qty-btn" id="qtyPlusBtn" aria-label="所持枚数を増やす">＋</button>' +
+        '<button type="button" class="qty-save-btn" id="qtySaveBtn">保存</button>' +
+        '</div></div>'
+      );
+    }
+    return (
+      '<div class="detail-row detail-quantity"><strong>📥 所持枚数:</strong>' +
+      '<div class="qty-control">' +
+      '<span class="qty-value">' + getOwnedCount(id) + '</span>枚' +
+      '<button type="button" class="qty-toggle-btn" id="qtyToggleBtn" aria-label="所持枚数を編集">増減</button>' +
+      '</div></div>'
+    );
+  }
+
+  function setupQuantityControls(id) {
+    if (quantityEditingId === id) {
+      const minusBtn = document.getElementById('qtyMinusBtn');
+      const plusBtn = document.getElementById('qtyPlusBtn');
+      const saveBtn = document.getElementById('qtySaveBtn');
+      if (minusBtn) minusBtn.addEventListener('click', function () { adjustPendingQuantity(id, -1); });
+      if (plusBtn) plusBtn.addEventListener('click', function () { adjustPendingQuantity(id, 1); });
+      if (saveBtn) saveBtn.addEventListener('click', function () { saveQuantity(id); });
+    } else {
+      const toggleBtn = document.getElementById('qtyToggleBtn');
+      if (toggleBtn) toggleBtn.addEventListener('click', function () { toggleQuantityEdit(id); });
+    }
   }
 
   function renderSkillsSimple(skills) {
@@ -628,7 +680,6 @@
       ? '<div class="detail-tags">' + card.tags.map(function (t) { return '<span class="tag-chip">' + escapeHtml(t) + '</span>'; }).join('') + '</div>'
       : '';
     const skillsHtml = renderSkillsSimple(card.skills);
-    const ownedCount = getOwnedCount(id);
 
     panel.innerHTML =
       '<div class="detail-header"><button class="detail-close" id="detailCloseBtn">← スキャンに戻る</button></div>' +
@@ -636,12 +687,7 @@
       '<img class="detail-image" src="' + escapeHtml(card.image_url) + '" alt="' + escapeHtml(card.name || '') + '" />' +
       '<div class="detail-info">' +
       '<h2>' + escapeHtml(card.name || '') + '</h2>' +
-      '<div class="detail-row detail-quantity"><strong>📥 所持枚数:</strong>' +
-      '<div class="qty-control">' +
-      '<button type="button" class="qty-btn" id="qtyMinusBtn" aria-label="所持枚数を減らす">−</button>' +
-      '<span class="qty-value" id="qtyValue">' + ownedCount + '</span>枚' +
-      '<button type="button" class="qty-btn" id="qtyPlusBtn" aria-label="所持枚数を増やす">＋</button>' +
-      '</div></div>' +
+      renderQuantityRow(id) +
       '<div class="detail-row"><strong>🆔 カード番号:</strong> ' + escapeHtml(id) + '</div>' +
       '<div class="detail-row"><strong>🃏 カードタイプ:</strong> ' + escapeHtml(card.card_type || '不明') + '</div>' +
       '<div class="detail-grid">' +

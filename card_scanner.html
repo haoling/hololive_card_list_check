@@ -268,16 +268,28 @@
       background: #5567d1;
     }
 
-    .qty-btn:disabled {
-      background: #b7bdd8;
-      cursor: not-allowed;
-    }
-
     .qty-value {
       min-width: 22px;
       text-align: center;
       font-size: 16px;
       font-weight: bold;
+    }
+
+    .qty-toggle-btn,
+    .qty-save-btn {
+      border: none;
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: bold;
+      cursor: pointer;
+      background: #eef0fb;
+      color: #33366f;
+    }
+
+    .qty-save-btn {
+      background: #667eea;
+      color: #fff;
     }
 
     .detail-grid {
@@ -340,7 +352,8 @@
     }
     body.dark .top-bar button,
     body.dark #toggleScanBtn,
-    body.dark .detail-close {
+    body.dark .detail-close,
+    body.dark .qty-toggle-btn {
       background: #2a2d42;
       color: #ecf0f1;
     }
