@@ -13,7 +13,7 @@ class CardCollector:
         self.headers = {
             'Cookie': 'cardlist_view=text; cardlist_search_sort=new'
         }
-        self.data_file = os.path.join('data', 'card_data.json')
+        self.data_file = os.environ.get('CARD_DATA_FILE', os.path.join('data', 'card_data.json'))
         self.existing_cards = self.load_existing_data()
 
     def load_existing_data(self):

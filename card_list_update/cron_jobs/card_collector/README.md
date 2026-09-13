@@ -37,5 +37,10 @@ python -m src
 
 ## 出力
 
-- カードデータは `data/card_data.json` に保存されます
+- カードデータは `data/card_data.json` に保存されます（`CARD_DATA_FILE` 環境変数で出力先を変更可能。GitHub Actions では `json_file/card_data.json`（アプリ本体のカードDB）を直接指定し、差分更新している）
 - 実行ログは `logs/card_collector.log` に保存されます
+
+## GitHub Actions での自動実行
+
+`.github/workflows/update-card-data.yml` から手動実行（`workflow_dispatch`）できます。
+`json_file/card_data.json` を直接更新し、変更があれば `sw-version.js` / `sw.js` のバージョンを自動で上げた上で Pull Request を作成します。

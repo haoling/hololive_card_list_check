@@ -1,0 +1,72 @@
+name: カードデータ自動更新
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+# 手動実行の多重起動を避ける
+concurrency:
+  group: update-card-data
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install dependencies
+        run: pip install -r card_list_update/cron_jobs/card_collector/requirements.txt
+
+      - name: Collect card data
+        working-directory: card_list_update/cron_jobs/card_collector
+        env:
+          CARD_DATA_FILE: ${{ github.workspace }}/json_file/card_data.json
+        run: python -m src
+
+      - name: Check for changes
+        id: diff
+        run: |
+          git add json_file/card_data.json
+          if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No changes to card_data.json"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Bump version
+        if: steps.diff.outputs.changed == 'true'
+        id: version
+        run: python card_list_update/cron_jobs/card_collector/bump_version.py
+
+      - name: Create branch, commit and open PR
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEW_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          BRANCH="automated/card-data-update-${{ github.run_id }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add json_file/card_data.json sw-version.js sw.js
+          git commit -m "chore: カードデータ更新 (v${NEW_VERSION})"
+          git push -u origin "$BRANCH"
+          BODY=$'## Summary\n- 公式サイトのカード一覧を自動収集し、`json_file/card_data.json` を更新\n- `sw-version.js` / `sw.js` のバージョンを v'"${NEW_VERSION}"$' に更新\n\nGitHub Actions ワークフロー「カードデータ自動更新」による自動生成 PR です。'
+          gh pr create \
+            --draft \
+            --base main \
+            --head "$BRANCH" \
+            --title "カードデータ更新 (v${NEW_VERSION})" \
+            --body "$BODY"
