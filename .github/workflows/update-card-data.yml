@@ -60,10 +60,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -b "$BRANCH"
-          git add json_file/card_data.json sw-version.js sw.js
+          git add json_file/card_data.json sw-version.js
           git commit -m "chore: カードデータ更新 (v${NEW_VERSION})"
           git push -u origin "$BRANCH"
-          BODY=$'## Summary\n- 公式サイトのカード一覧を自動収集し、`json_file/card_data.json` を更新\n- `sw-version.js` / `sw.js` のバージョンを v'"${NEW_VERSION}"$' に更新\n\nGitHub Actions ワークフロー「カードデータ自動更新」による自動生成 PR です。'
+          BODY=$'## Summary\n- 公式サイトのカード一覧を自動収集し、`json_file/card_data.json` を更新\n- `sw-version.js` の表示用バージョンを v'"${NEW_VERSION}"$' に更新（キャッシュ無効化はデプロイ時に自動化されているため対象外）\n\nGitHub Actions ワークフロー「カードデータ自動更新」による自動生成 PR です。'
           gh pr create \
             --draft \
             --base main \

@@ -1,77 +1,23 @@
 # バージョン更新ガイドライン
 
-## � 推奨方法：自動バージョン更新スクリプト
+**2026-09〜: キャッシュの無効化は完全に自動化された。** `main` に push すると
+`.github/workflows/deploy.yml` が `scripts/deploy/build_site.py` を実行し、
+JS/CSSファイルを内容ハッシュ付きファイル名にリネームしてデプロイする。
+これにより、ここで説明する `APP_VERSION` はキャッシュの動作に一切影響しない
+**更新履歴表示用の備忘録**になった。書き忘れてもキャッシュが古くなる心配はない。
 
-### 基本的な使用方法
+詳しい仕組みは `CLAUDE.md` の「キャッシュ運用ルール」を参照。
+
+## 更新履歴を書きたいとき（任意）
+
+更新履歴として意味のある変更をしたときだけ、`sw-version.js` を編集する
+（`APP_VERSION` / `VERSION_DESCRIPTION` / `UPDATE_DETAILS.changes`）。
+
+自動化スクリプトを使う場合:
 ```bash
-# 基本形式
-node update-version.js [新しいバージョン] "[説明]"
-
-# 例
-node update-version.js 4.11.5 "バグ修正とパフォーマンス改善"
-node update-version.js 4.17.0 "新機能：カード検索機能の追加"
+node scripts/maintenance/update-version.js 4.29.0 "新機能の説明"
 ```
-
-### スクリプトが自動で更新するファイル
-- ✅ `sw-version.js` - APP_VERSION, VERSION_DESCRIPTION, PAGE_VERSIONS
-- ✅ `index.html` - HTMLコメントと表示バージョン
-- ✅ `binder_collection.html` - HTMLコメントと表示バージョン
-- ✅ `collection_binder.html` - HTMLコメントと表示バージョン
-- ✅ `card_list.html` - HTMLコメントと表示バージョン
-- ✅ `holoca_skill_page.html` - HTMLコメントと表示バージョン
-- ✅ `deck_builder.html` - HTMLコメントと表示バージョン
-- ✅ `package.json` - バージョンフィールド（存在する場合）
-
-### 利点
-- 🎯 **一貫性**: 全ファイルのバージョンが確実に統一される
-- ⚡ **効率性**: 手動更新の時間を大幅短縮
-- 🛡️ **エラー防止**: 人為的なミスを回避
-- 📋 **追跡性**: 更新されたファイルが明確に表示される
-
-## 🔧 手動更新が必要な場合（非推奨）
-
-### 1. 文字エンコーディング
-- ファイルは必ずUTF-8で保存
-- 絵文字や特殊文字は正確にコピー
-- 文字化けした場合は手動で修正
-
-### 2. 文字列マッチング
-- `replace_string_in_file`使用時は前後3-5行のコンテキストを含める
-- 完全一致する文字列を使用
-- 特殊文字やエスケープ文字に注意
-
-### 3. 推奨更新手順
-```bash
-# 1. 自動スクリプトを使用（推奨）
-node update-version.js 4.9.0 "新機能説明"
-
-# 2. 手動での部分更新（非推奨）
-# - 小さなセクションずつ更新
-# - 一度に複数箇所を変更しない
-
-# 3. 検証
-node -c sw-version.js  # 構文チェック
-```
-
-### 4. よくある失敗パターン
-- 絵文字の文字化け → 正しい絵文字に手動修正
-- 改行コードの不一致 → エディタの設定確認
-- 重複する文字列 → より具体的なコンテキストを使用
-- 特殊文字のエスケープ → Raw文字列を使用
-
-### 5. 緊急時の対応
-```javascript
-// sw-version.jsが壊れた場合のテンプレート
-const APP_VERSION = 'X.X.X';
-const VERSION_DESCRIPTION = '説明';
-const PAGE_VERSIONS = { /* ... */ };
-const UPDATE_DETAILS = { /* ... */ };
-
-// Export
-if (typeof self !== 'undefined') {
-  self.APP_VERSION = APP_VERSION;
-  self.VERSION_DESCRIPTION = VERSION_DESCRIPTION;
-  self.PAGE_VERSIONS = PAGE_VERSIONS;
-  self.UPDATE_DETAILS = UPDATE_DETAILS;
-}
-```
+`sw-version.js` の `APP_VERSION` / `VERSION_DESCRIPTION` と、`package.json` の
+`version` フィールド（存在する場合）を更新する。この開発機に Node.js が無い場合は
+`sw-version.js` を直接編集してもよい（`APP_VERSION` / `VERSION_DESCRIPTION` の
+2箇所だけを書き換える単純なファイル）。

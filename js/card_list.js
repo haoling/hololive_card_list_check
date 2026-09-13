@@ -1134,30 +1134,6 @@ window.onload = async () => {
       filterToggleBtn.textContent = '🔽 フィルター表示';
     }
 
-    // ✅ Service Worker からバージョン情報を取得して表示
-    try {
-      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-        const messageChannel = new MessageChannel();
-        messageChannel.port1.onmessage = (event) => {
-          if (event.data.type === 'VERSION_INFO_RESPONSE') {
-            const versionEl = document.getElementById('versionDisplay');
-            if (versionEl && event.data.data) {
-              versionEl.textContent = `[v${event.data.data.pageVersions['card_list.html']}-CENTRALIZED]`;
-            }
-          }
-        };
-        navigator.serviceWorker.controller.postMessage(
-          { type: 'GET_VERSION_INFO' },
-          [messageChannel.port2]
-        );
-      }
-    } catch (error) {
-      const versionEl = document.getElementById('versionDisplay');
-      if (versionEl) {
-        versionEl.textContent = '[v4.1.0-CENTRALIZED]';
-      }
-    }
-
     try {
       // Try to load from localStorage first (for offline use)
       const cachedCardData = localStorage.getItem('cardData');
@@ -1266,36 +1242,20 @@ window.onload = async () => {
             }
           });
 
-          // Check for updates
+          // 新しいSWがインストールされたら、SWキャッシュに加えて
+          // localStorageの card_data.json ローカルキャッシュ（24時間TTL）も
+          // 破棄してから強制リロードする（そうしないと更新後もローカルキャッシュの
+          // 古いカードデータが最大24時間表示され続けてしまう）
           registration.addEventListener('updatefound', () => {
             const newWorker = registration.installing;
             newWorker.addEventListener('statechange', () => {
               if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                // Get update message from centralized system
-                const messageChannel = new MessageChannel();
-                messageChannel.port1.onmessage = (event) => {
-                  if (event.data.type === 'UPDATE_MESSAGE_RESPONSE') {
-                  } else {
-                  }
-                };
-
-                try {
-                  navigator.serviceWorker.controller.postMessage(
-                    { type: 'GET_UPDATE_MESSAGE' },
-                    [messageChannel.port2]
-                  );
-                } catch (msgError) {
-                }
-
-                // Clear all caches first
                 caches.keys().then(cacheNames => {
                   return Promise.all(cacheNames.map(cacheName => caches.delete(cacheName)));
                 }).then(() => {
-                  // Clear localStorage cache as well
                   localStorage.removeItem('cardData');
                   localStorage.removeItem('releaseData');
                   localStorage.removeItem('dataTimestamp');
-                  // Force reload without user confirmation
                   window.location.reload(true);
                 });
               }
@@ -1322,150 +1282,6 @@ window.onload = async () => {
   // Update status on page load and network changes
   window.addEventListener('online', updateOnlineStatus);
   window.addEventListener('offline', updateOnlineStatus);
-
-  // ✅ 更新確認機能 - 現在のページのみをチェック
-  async function checkForUpdates() {
-    const statusEl = document.getElementById('versionDisplay');
-    if (!statusEl) return;
-
-    try {
-      statusEl.textContent = '[確認中...]';
-      statusEl.style.color = '#007acc';
-
-      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-        const messageChannel = new MessageChannel();
-
-        // タイムアウト設定（10秒）
-        const timeout = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Service Worker timeout')), 10000)
-        );
-
-        // Service Workerからのレスポンスを待機
-        const checkPromise = new Promise((resolve, reject) => {
-          messageChannel.port1.onmessage = (event) => {
-            if (event.data.type === 'SINGLE_PAGE_VERSION_RESPONSE') {
-              resolve(event.data.data);
-            } else if (event.data.type === 'SINGLE_PAGE_VERSION_ERROR') {
-              reject(new Error(event.data.error));
-            }
-          };
-        });
-
-        // 現在のページの単一バージョンチェック要求を送信
-        navigator.serviceWorker.controller.postMessage(
-          { type: 'CHECK_SINGLE_PAGE_VERSION', data: { page: 'card_list.html' } },
-          [messageChannel.port2]
-        );
-
-        // レスポンス待機（タイムアウト付き）
-        const versionCheckResult = await Promise.race([checkPromise, timeout]);
-
-        if (versionCheckResult.hasUpdates && versionCheckResult.pageInfo) {
-          const pageInfo = versionCheckResult.pageInfo;
-
-          statusEl.innerHTML = `🚀 更新利用可能`;
-          statusEl.style.color = '#ff6b35';
-
-          // 現在のページのみの詳細情報を生成
-          let detailMessage = `� ${pageInfo.page} のバージョン不一致が検出されました:\n\n`;
-          detailMessage += `📊 期待バージョン: v${pageInfo.expectedVersion}\n`;
-          detailMessage += `📊 現在のバージョン: v${pageInfo.actualVersion || '不明'}\n`;
-          detailMessage += `📊 キャッシュバージョン: v${pageInfo.cachedVersion || 'なし'}\n\n`;
-
-          // ミスマッチの理由を日本語で説明
-          let reasonText = '';
-          switch(pageInfo.reason) {
-            case 'expected_vs_actual_mismatch':
-              reasonText = '期待バージョンと実際バージョンが不一致';
-              break;
-            case 'actual_vs_cached_mismatch':
-              reasonText = '実際バージョンとキャッシュバージョンが不一致';
-              break;
-            case 'actual_version_not_found':
-              reasonText = '実際のバージョン情報が見つかりません';
-              break;
-            case 'no_cached_version':
-              reasonText = 'キャッシュにバージョン情報がありません';
-              break;
-            default:
-              reasonText = pageInfo.reason;
-          }
-          detailMessage += `理由: ${reasonText}\n\n`;
-
-          setTimeout(() => {
-            if (confirm(detailMessage + 'このページを更新してアプリケーションを再読み込みしますか？')) {
-              // ページ単体キャッシュ削除＆リロード
-              if (navigator.serviceWorker.controller) {
-                const messageChannel = new MessageChannel();
-                messageChannel.port1.onmessage = (event) => {
-                  if (event.data.type === 'DELETE_PAGE_CACHE_DONE') {
-                    window.location.reload(true);
-                  } else if (event.data.type === 'DELETE_PAGE_CACHE_ERROR') {
-                    alert('キャッシュ削除に失敗しました: ' + event.data.error);
-                    window.location.reload(true);
-                  }
-                };
-                navigator.serviceWorker.controller.postMessage(
-                  { type: 'DELETE_PAGE_CACHE', data: { page: 'card_list.html' } },
-                  [messageChannel.port2]
-                );
-              } else {
-                // Service Worker未利用時は従来通り
-                window.location.reload(true);
-              }
-            } else {
-              // バージョン情報を再表示
-              displayVersionInfo();
-            }
-          }, 2000);
-        } else {
-          statusEl.innerHTML = `✅ 最新 v${versionCheckResult.expectedVersion}`;
-          statusEl.style.color = '#4caf50';
-          setTimeout(() => {
-            displayVersionInfo();
-          }, 3000);
-        }
-
-      } else {
-        statusEl.textContent = '[v4.1.0-SW-UNAVAILABLE]';
-        statusEl.style.color = '#f44336';
-      }
-
-    } catch (error) {
-      statusEl.textContent = '[v4.1.0-ERROR: ' + error.message + ']';
-      statusEl.style.color = '#f44336';
-      setTimeout(() => {
-        displayVersionInfo();
-      }, 5000);
-    }
-  }
-
-  // ✅ バージョン情報を表示する関数
-  async function displayVersionInfo() {
-    const statusEl = document.getElementById('versionDisplay');
-    if (!statusEl) return;
-
-    try {
-      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-        const messageChannel = new MessageChannel();
-        messageChannel.port1.onmessage = (event) => {
-          if (event.data.type === 'VERSION_INFO_RESPONSE') {
-            if (event.data.data && event.data.data.pageVersions) {
-              statusEl.textContent = `[v${event.data.data.pageVersions['card_list.html']}-CENTRALIZED]`;
-            }
-          }
-        };
-        navigator.serviceWorker.controller.postMessage(
-          { type: 'GET_VERSION_INFO' },
-          [messageChannel.port2]
-        );
-      } else {
-        statusEl.textContent = '[4.10.0-VERSION-SYNC-UPDATE]';
-      }
-    } catch (error) {
-      statusEl.textContent = '[4.10.0-VERSION-SYNC-UPDATE]';
-    }
-  }
 
 // --- グローバル公開は必ず一番最後で ---
 window.toggleViewMode = toggleViewMode;

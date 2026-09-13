@@ -1,13 +1,13 @@
-// Service Worker for offline caching with centralized version management
-// Version: 4.28.2
-// 注意: バージョンアップ時は sw-version.js と合わせてこのコメントも更新すること。
-// （SWの更新検知は sw.js 本体のバイト差分が最速・最確実。importScripts の
-//   sw-version.js だけの変更だと、環境によって検知がHTTPキャッシュのTTL分遅れる）
+// Service Worker for offline caching
+// キャッシュの無効化はデプロイ時にビルドスクリプト（scripts/deploy/build_site.py）が
+// 自動で行う。urlsToCache 内のJS/CSSファイル名と、下のキャッシュ名のプレースホルダー文字列は
+// デプロイのたびにビルドスクリプトが書き換える（このファイル自体には手を入れない）。
+// これにより sw.js 本体のバイト内容が変更のたびに必ず変わり、ブラウザの更新検知が働く。
 
 // Import version configuration and utility functions
 importScripts('./sw-version.js', './sw-utils.js', './sw-handlers.js');
 
-const CACHE_NAME = `hololive-card-tool-v${APP_VERSION}-${VERSION_DESCRIPTION.replace(/\s+/g, '-')}`;
+const CACHE_NAME = 'hololive-card-tool-__BUILD_HASH__';
 // カード画像（外部URL）はバージョンに依存しない永続キャッシュに分離する。
 // CACHE_NAME に入れるとバージョンアップごとに数百枚の画像を再取得することになるため。
 const IMAGE_CACHE = 'hololive-card-images-v1';

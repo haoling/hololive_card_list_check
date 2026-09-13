@@ -792,11 +792,6 @@ navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
 document.addEventListener('DOMContentLoaded', function() {
     // デッキビルダー初期化
     initializeDeckBuilder();
-    
-    // Service Worker からバージョン情報を取得して表示
-    setTimeout(() => {
-        displayVersionInfo();
-    }, 1000);
 });
 
     // 🌐 オンライン/オフライン状態の表示管理
@@ -818,44 +813,3 @@ if (statusElement) {
     window.addEventListener('offline', updateOnlineStatus);
     window.addEventListener('load', updateOnlineStatus);
 
-async function sendMessageToSW(type, data) {
-  if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) {
-    throw new Error('Service Worker not available');
-  }
-
-  return new Promise((resolve) => {
-    const messageChannel = new MessageChannel();
-    messageChannel.port1.onmessage = (event) => {
-      resolve(event.data);
-    };
-    navigator.serviceWorker.controller.postMessage({ type, data }, [messageChannel.port2]);
-  });
-}
-
-// ✅ バージョン情報を取得
-async function getVersionInfo() {
-  return await sendMessageToSW('GET_VERSION_INFO');
-}
-
-
-// ✅ バージョン情報を表示する関数
-async function displayVersionInfo() {
-  const statusEl = document.getElementById('versionDisplay');
-  if (!statusEl) return;
-
-  try {
-    const versionInfo = await getVersionInfo();
-    if (versionInfo && versionInfo.data) {
-      statusEl.textContent = `[v${versionInfo.data.pageVersions['deck_builder.html']}-CENTRALIZED]`;
-    }
-  } catch (error) {
-    statusEl.textContent = '[v4.0.0-CENTRALIZED]';
-  }
-}
-
-// ✅ Service Worker登録
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then(function(registration) {
-  }).catch(function(error) {
-  });
-}
