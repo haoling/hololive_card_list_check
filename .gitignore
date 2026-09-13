@@ -36,3 +36,6 @@ coverage/
 
 #input_file
 input_file/
+
+# card_collector のローカル実行時スクラッチ出力（本番DBは json_file/card_data.json）
+card_list_update/cron_jobs/card_collector/data/
