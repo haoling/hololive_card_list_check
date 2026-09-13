@@ -5,8 +5,8 @@
 //   - PAGE_VERSIONS は APP_VERSION から自動生成（手書きしない）
 //   ※ sw.js 本体のバージョンコメントも合わせて更新するとSW更新検知が最速（sw.js のバイト差分）
 
-const APP_VERSION = "4.28.1";
-const VERSION_DESCRIPTION = "カード一覧のモバイル表示でログイン中もGoogleログインボタンが消えない不具合を修正";
+const APP_VERSION = "4.28.2";
+const VERSION_DESCRIPTION = "カードデータ自動更新（2026-09-13）";
 
 // ✅ 対象ページ一覧（バージョンは APP_VERSION に統一＝単一ソース。手書きの個別バージョンは持たない）
 const VERSIONED_PAGES = [
