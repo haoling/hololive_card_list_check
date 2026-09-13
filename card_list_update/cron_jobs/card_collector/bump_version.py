@@ -1,7 +1,8 @@
 """カードデータ自動更新用のバージョン更新スクリプト
 
-sw-version.js の APP_VERSION（パッチバージョン）と VERSION_DESCRIPTION、
-および sw.js 先頭のバージョンコメントを更新する。
+sw-version.js の APP_VERSION（パッチバージョン）と VERSION_DESCRIPTION
+（更新履歴表示用の備忘録）を更新する。キャッシュの無効化自体はデプロイ時に
+scripts/deploy/build_site.py が自動で行うため、ここでは sw.js は一切触らない。
 GitHub Actions のカードデータ自動更新ワークフローからのみ使用する想定。
 
 リポジトリルートで実行すること: python card_list_update/cron_jobs/card_collector/bump_version.py
@@ -13,11 +14,9 @@ import sys
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 SW_VERSION_PATH = os.path.join(REPO_ROOT, 'sw-version.js')
-SW_PATH = os.path.join(REPO_ROOT, 'sw.js')
 
 APP_VERSION_RE = re.compile(r'const APP_VERSION = "(\d+)\.(\d+)\.(\d+)";')
 VERSION_DESCRIPTION_RE = re.compile(r'const VERSION_DESCRIPTION = ".*?";')
-SW_COMMENT_RE = re.compile(r'// Version: \d+\.\d+\.\d+')
 
 
 def bump_patch_version(version_tuple):
@@ -48,12 +47,6 @@ def main():
     )
     with open(SW_VERSION_PATH, 'w', encoding='utf-8') as f:
         f.write(sw_version_content)
-
-    with open(SW_PATH, 'r', encoding='utf-8') as f:
-        sw_content = f.read()
-    sw_content = SW_COMMENT_RE.sub(f'// Version: {new_version}', sw_content, count=1)
-    with open(SW_PATH, 'w', encoding='utf-8') as f:
-        f.write(sw_content)
 
     print(new_version)
 

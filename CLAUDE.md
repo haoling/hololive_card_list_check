@@ -1,7 +1,10 @@
 # CLAUDE.md
 
 ホロライブカードゲーム（ホロライブOCG）の非公式ファンメイドWebツール集。
-**ビルドシステムなし・フレームワークなしの静的 HTML + JS（PWA）**。npm install も不要（package.json はメタデータのみ）。
+**ローカル開発・実行はビルドシステムなし・フレームワークなしの静的 HTML + JS（PWA）**。npm install も不要（package.json はメタデータのみ）。
+デプロイ時（GitHub Actions）だけ、キャッシュ自動無効化のための軽量なビルドステップが挟まる
+（後述「キャッシュ運用ルール」）。`main` ブランチのソース自体には一切書き戻されないので、
+ローカルでの開発体験・動作確認方法（下記）は変わらない。
 
 ## 実行方法
 
@@ -13,17 +16,37 @@
 - `index.html` — ランディング。各ツール（カード一覧 / スキル検索 / デッキビルダー / バインダー / バトルシミュレーター）へのリンク
 - `js/` — 各ページのスクリプト。`utils.js`（チップ/ダークモード等の共通UI）と `offline-utils.js`（オフライン表示）がページ間共有
 - `json_file/card_data.json` — カードDB（カードID → カード情報）
-- `sw.js` + `sw-version.js` + `sw-utils.js` + `sw-handlers.js` — Service Worker。**JSファイルの追加・改名時は sw.js の urlsToCache と sw-version.js のバージョンを更新**しないとキャッシュで反映されない
+- `sw.js` + `sw-version.js` + `sw-utils.js` + `sw-handlers.js` — Service Worker。**新しいJS/CSSファイルを追加したときは sw.js の urlsToCache に1行追加する**（それ以外＝キャッシュの無効化自体は自動化されている。後述）
+- `scripts/deploy/build_site.py` — デプロイ時ビルドスクリプト。`.github/workflows/deploy.yml` から実行される
 
-### キャッシュ運用ルール（2026-06-13 整理）
+### キャッシュ運用ルール（2026-09 自動化）
 
-- **バージョンアップ時は sw-version.js と sw.js 先頭のバージョンコメントの両方を更新する**（sw.js 本体のバイト差分が最速の更新検知）
+キャッシュの無効化（バージョンアップ）は **完全に自動化されている。人間が手でバージョン番号を
+上げる必要はない。**
+
+- `main` に push されるたびに `.github/workflows/deploy.yml` が `scripts/deploy/build_site.py` を実行し、
+  リポジトリを `dist/` にコピーした上で GitHub Pages にデプロイする（`main` 上のソース自体は汚さない）
+- `build_site.py` は `js/*.js` / `css/*.css` / `config/google-client-id.js` を内容のSHA-256ハッシュ付き
+  ファイル名に実際にリネームし、各HTMLと `sw.js` の `urlsToCache` 内の参照を書き換える
+  （例: `js/card_list.js` → `js/card_list.a1b2c3d4.js`）。**これによりファイル名自体が
+  内容変更のたびに変わるので、ブラウザ・Service Worker のキャッシュは常に自動的に無効化される**
+- 上記の全ファイルハッシュ + `card_data.json`/`release_dates.json` の内容から1つの集約ハッシュを
+  計算し、`dist/sw.js` 内のキャッシュ名（`CACHE_NAME`）に埋め込む。これにより JS/CSS だけでなく
+  JSONデータだけの更新でも `sw.js` 本体のバイト内容が必ず変わり、SWの更新検知が確実に働く
+  （JSONだけ更新してキャッシュが古いまま、という旧来のバグが構造的に起きなくなった）
+- `sw-version.js` の `APP_VERSION` / `VERSION_DESCRIPTION` / `UPDATE_DETAILS` は
+  **キャッシュ無効化には一切使われない、更新履歴表示用の備忘録**。書いても書かなくてもキャッシュの
+  挙動には影響しないので、更新履歴として意味のある変更をしたときだけ手動で更新すればよい
 - SW登録は全ページ `{ updateViaCache: 'none' }` 統一（無指定の register があると設定が戻るので追加時注意）
 - 新バージョンのキャッシュ取得は `cache: 'reload'` でHTTPキャッシュを迂回している（sw.js install/activate）
 - 外部カード画像は `IMAGE_CACHE`（バージョン非依存）に分離。activate の削除対象から除外されている
 - **battle_simulator_v2/ 配下は開発中のためSWキャッシュを常時バイパス**（sw.js fetch handler 冒頭）。
+  `build_site.py` のリネーム対象からも除外している。
   v2 を正式リリースしてオフライン対応する際は、このバイパスを外して urlsToCache に v2 ファイル一式を追加すること
 - モジュールシステム不使用。各ファイルは class を定義して `window.XXX` に登録し、`<script>` タグの順序で依存を解決している
+- 「新しいバージョンがあります」的な確認ダイアログは廃止済み。更新はブラウザ標準のSW更新検知
+  （`registration.update()` / `controllerchange` / `CACHE_UPDATED` メッセージ）に任せて
+  ユーザーに確認を取らず自動でリロードする
 
 ## バトルシミュレーター（v2 / 唯一の現行ライン）
 
@@ -59,5 +82,9 @@
 
 ## 環境メモ
 
-- この開発機に Node.js は入っていない（構文チェックやテストランナーは使えない前提）
+- この開発機に Node.js は入っていない（構文チェックやテストランナーは使えない前提）。
+  `scripts/deploy/build_site.py` は Python 製で、GitHub Actions 側でのみ実行される
 - コメント・ログ・ドキュメントは日本語
+- GitHub リポジトリの Settings → Pages → Build and deployment → Source は
+  **「GitHub Actions」** にしておくこと（`.github/workflows/deploy.yml` がデプロイを担う。
+  「Deploy from a branch」のままだと `main` の生ソースが配信され続けてしまう）

@@ -241,18 +241,6 @@
       }
     }
 
-    /* 更新確認ボタンのスタイル */
-    #updateCheckBtn:hover:not(:disabled) {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
-    }
-
-    #updateCheckBtn:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-      transform: none !important;
-    }
-
     /* ドライブエクスポートボタンのスタイル */
     #driveExportBtn:hover:not(:disabled) {
       transform: translateY(-2px);
@@ -601,23 +589,8 @@
       </details>
     </div>
 
-    <!-- 更新確認・エクスポートボタン -->
+    <!-- エクスポートボタン -->
     <div style="text-align: center; margin: 20px 0;">
-      <button id="updateCheckBtn" onclick="checkForUpdates()" style="
-        background: linear-gradient(45deg, #28a745, #20c997);
-        color: white;
-        border: none;
-        padding: 12px 24px;
-        border-radius: 25px;
-        font-size: 14px;
-        font-weight: bold;
-        cursor: pointer;
-        box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
-        transition: all 0.3s ease;
-        margin: 0 10px;
-      ">
-        🔄 更新確認
-      </button>
       <button id="driveExportBtn" onclick="showDriveExportDialog()" style="
         background: linear-gradient(45deg, #4285f4, #34a853);
         color: white;
@@ -665,7 +638,6 @@
       ">
         🗑️ キャッシュ削除
       </button>
-      <div id="updateStatus" style="margin-top: 10px; font-size: 12px; color: #666; line-height: 1.3; max-width: 400px; white-space: pre-line;"></div>
     </div>
 
     <div class="footer">
@@ -767,87 +739,18 @@
   </div>
 
   <script>
-    // ✅ Service Worker との通信機能
-    async function sendMessageToSW(type, data = null) {
-      if (!navigator.serviceWorker.controller) return null;
-
-      return new Promise((resolve) => {
-        const messageChannel = new MessageChannel();
-        messageChannel.port1.onmessage = (event) => {
-          resolve(event.data);
-        };
-
-        navigator.serviceWorker.controller.postMessage(
-          { type, data },
-          [messageChannel.port2]
-        );
-      });
-    }
-
-    // ✅ バージョン情報を取得
-    async function getVersionInfo() {
-      return await sendMessageToSW('GET_VERSION_INFO');
-    }
-
-    // ✅ 更新メッセージを取得
-    async function getUpdateMessage() {
-      return await sendMessageToSW('GET_UPDATE_MESSAGE');
-    }
-
-    // ✅ 古いページをチェック
-    async function checkOutdatedPages() {
-      return await sendMessageToSW('CHECK_OUTDATED_PAGES');
-    }
-
-    // Service Worker registration with centralized version management
+    // Service Worker registration
+    // キャッシュの無効化はデプロイ時に自動化されているため、ここでは
+    // ブラウザ標準の更新検知に任せて自動でリロードするだけでよい
+    // （ユーザーに確認を取る通知UIは廃止した）。
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js', {
           updateViaCache: 'none' // モバイル向け：キャッシュを使わず常に最新をチェック
         })
           .then((registration) => {
-
             // モバイル向け：即座に更新チェック
             registration.update();
-
-            // ✅ 新しいバージョン管理システムで更新確認
-            const checkForUpdates = async () => {
-              try {
-                // Service Worker が準備できるまで待機
-                if (!navigator.serviceWorker.controller) {
-                  setTimeout(checkForUpdates, 1000);
-                  return;
-                }
-
-                const updateMessage = await getUpdateMessage();
-                if (!updateMessage) return;
-
-                if (confirm(updateMessage.data.message)) {
-                  // 全キャッシュクリア後にリロード
-                  const cacheNames = await caches.keys();
-                  await Promise.all(cacheNames.map(cacheName => caches.delete(cacheName)));
-                  window.location.href = window.location.href + '?v=' + Date.now();
-                }
-              } catch (error) {
-              }
-            };
-
-            // Check for waiting service worker with new system
-            if (registration.waiting) {
-              setTimeout(checkForUpdates, 500);
-            }
-
-            // Listen for updates with new system
-            registration.addEventListener('updatefound', () => {
-              const newWorker = registration.installing;
-              if (newWorker) {
-                newWorker.addEventListener('statechange', () => {
-                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                    setTimeout(checkForUpdates, 500);
-                  }
-                });
-              }
-            });
 
             // Listen for controller change
             navigator.serviceWorker.addEventListener('controllerchange', () => {
@@ -888,186 +791,6 @@
     window.addEventListener('online', updateOnlineStatus);
     window.addEventListener('offline', updateOnlineStatus);
     window.addEventListener('load', updateOnlineStatus);
-
-    // Manual update check function
-    let serviceWorkerRegistration = null;
-
-    // Store registration for manual update checks
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
-          .then((registration) => {
-            serviceWorkerRegistration = registration;
-            // ... existing code above
-          });
-      });
-    }
-
-    async function checkForUpdates() {
-      const statusEl = document.getElementById('updateStatus');
-      const btnEl = document.getElementById('updateCheckBtn');
-
-      if (!navigator.onLine) {
-        statusEl.textContent = '⚠️ オフライン状態では更新確認できません';
-        statusEl.style.color = '#ff9800';
-        return;
-      }
-
-      try {
-        btnEl.disabled = true;
-        btnEl.textContent = '🔄 確認中...';
-        statusEl.textContent = 'バージョン情報を確認中...';
-        statusEl.style.color = '#2196f3';
-
-        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-          const messageChannel = new MessageChannel();
-
-          // タイムアウト設定（10秒）
-          const timeout = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Service Worker timeout')), 10000)
-          );
-
-          // Service Workerからのレスポンスを待機
-          const checkPromise = new Promise((resolve, reject) => {
-            messageChannel.port1.onmessage = (event) => {
-              if (event.data.type === 'VERSION_MISMATCH_RESPONSE') {
-                resolve(event.data.data);
-              } else if (event.data.type === 'VERSION_MISMATCH_ERROR') {
-                reject(new Error(event.data.error));
-              }
-            };
-          });
-
-          // 詳細バージョンチェック要求を送信
-          navigator.serviceWorker.controller.postMessage(
-            { type: 'CHECK_VERSION_MISMATCH' },
-            [messageChannel.port2]
-          );
-
-          // レスポンス待機（タイムアウト付き）
-          const versionCheckResult = await Promise.race([checkPromise, timeout]);
-
-          if (versionCheckResult.hasUpdates) {
-            // バージョン不一致の詳細情報を生成
-            let detailMessage = '🚀 バージョンの不一致が検出されました:\n\n';
-            detailMessage += `📊 アプリバージョン: v${versionCheckResult.currentAppVersion}\n`;
-            detailMessage += `🕐 チェック時刻: ${new Date(versionCheckResult.timestamp).toLocaleString('ja-JP')}\n\n`;
-
-            versionCheckResult.outdatedPages.forEach(pageInfo => {
-              detailMessage += `📄 ${pageInfo.page}:\n`;
-              detailMessage += `  ┣ 期待バージョン: v${pageInfo.expectedVersion}\n`;
-              detailMessage += `  ┣ 実際のバージョン: v${pageInfo.actualVersion || '不明'}\n`;
-              detailMessage += `  ┣ キャッシュバージョン: v${pageInfo.cachedVersion || 'なし'}\n`;
-
-              // ミスマッチの理由を日本語で説明
-              let reasonText = '';
-              switch(pageInfo.reason) {
-                case 'expected_vs_actual_mismatch':
-                  reasonText = '期待バージョンと実際バージョンが不一致';
-                  break;
-                case 'actual_vs_cached_mismatch':
-                  reasonText = '実際バージョンとキャッシュバージョンが不一致';
-                  break;
-                case 'actual_version_not_found':
-                  reasonText = '実際のバージョン情報が見つかりません';
-                  break;
-                case 'no_cached_version':
-                  reasonText = 'キャッシュにバージョン情報がありません';
-                  break;
-                default:
-                  reasonText = pageInfo.reason;
-              }
-              detailMessage += `  ┗ 理由: ${reasonText}\n\n`;
-            });
-
-            statusEl.innerHTML = `🚀 更新が利用可能です (${versionCheckResult.outdatedPages.length}ページ)<br><small>詳細情報を確認してください</small>`;
-            statusEl.style.color = '#4caf50';
-
-            setTimeout(() => {
-              if (confirm(detailMessage + 'バージョン不一致のページを更新してアプリケーションを再読み込みしますか？')) {
-                statusEl.innerHTML = `⚡ 更新中...<br><small>対象ページのキャッシュをクリア中</small>`;
-                statusEl.style.color = '#ff9800';
-
-                // バージョン不一致のページのみをターゲットにした更新処理
-
-                // Service Workerに強制更新を要求（対象ページのみ）
-                if (navigator.serviceWorker.controller) {
-                  navigator.serviceWorker.controller.postMessage({
-                    type: 'FORCE_UPDATE',
-                    outdatedPages: versionCheckResult.outdatedPages.map(p => p.page)
-                  });
-                }
-
-                // 対象ページのキャッシュクリア + 必要最小限の全体キャッシュクリア
-                if ('caches' in window) {
-                  caches.keys().then(cacheNames => {
-                    return Promise.all(cacheNames.map(cacheName => {
-                      return caches.delete(cacheName);
-                    }));
-                  }).then(() => {
-                    statusEl.innerHTML = `🔄 アプリケーションを再読み込み中...<br><small>更新されたページを反映します</small>`;
-                    // Service Workerの更新を待つ
-                    return new Promise(resolve => setTimeout(resolve, 1000));
-                  }).then(() => {
-                    // 対象ページの更新を反映するためのリロード
-                    if (window.location.reload) {
-                      window.location.reload(true); // 強制リロード
-                    } else {
-                      window.location.href = window.location.href + '?t=' + Date.now();
-                    }
-                  }).catch(error => {
-                    window.location.href = window.location.href + '?t=' + Date.now();
-                  });
-                } else {
-                  // キャッシュAPIが使えない場合のフォールバック
-                  window.location.href = window.location.href + '?t=' + Date.now();
-                }
-              } else {
-                // キャンセル時は元の状態に戻す
-                statusEl.innerHTML = `ℹ️ 更新がキャンセルされました<br><small>必要な時に再度確認してください</small>`;
-                statusEl.style.color = '#2196f3';
-              }
-            }, 2000);
-          } else {
-            // 最新の場合、比較したバージョン情報を詳細表示
-            let versionDetails = `✅ 最新バージョン v${versionCheckResult.currentAppVersion}<br>`;
-            versionDetails += `<small>📊 各ページのバージョン情報:<br><br>`;
-
-            if (versionCheckResult.allPages && versionCheckResult.allPages.length > 0) {
-              versionCheckResult.allPages.forEach(pageInfo => {
-                const pageName = pageInfo.page.replace('.html', '');
-                const expectedV = pageInfo.expectedVersion;
-                const actualV = pageInfo.actualVersion;
-                const status = expectedV === actualV ? '✅' : '⚠️';
-
-                versionDetails += `${status} ${pageName}<br>`;
-                versionDetails += `&nbsp;&nbsp;├ 最新: v${expectedV}<br>`;
-                versionDetails += `&nbsp;&nbsp;└ 現在: v${actualV}<br><br>`;
-              });
-            } else {
-              versionDetails += `全ページのバージョンが最新です`;
-            }
-            versionDetails += `</small>`;
-
-            statusEl.innerHTML = versionDetails;
-            statusEl.style.color = '#4caf50';
-            setTimeout(() => {
-              statusEl.textContent = '';
-            }, 7000); // 表示時間を延長
-          }
-        } else {
-          statusEl.textContent = '⚠️ Service Worker が利用できません';
-          statusEl.style.color = '#ff9800';
-        }
-
-      } catch (error) {
-        statusEl.textContent = '❌ 更新確認に失敗しました: ' + error.message;
-        statusEl.style.color = '#f44336';
-      } finally {
-        btnEl.disabled = false;
-        btnEl.textContent = '🔄 更新確認';
-      }
-    }
 
     // セーフナビゲーション関数（フォールバック付き）
     function safeNavigate(url) {
