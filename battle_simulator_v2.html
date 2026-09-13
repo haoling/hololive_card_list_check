@@ -19,6 +19,19 @@
       <select id="deck-p1"></select>
       <label for="deck-p2">プレイヤー2 のデッキ</label>
       <select id="deck-p2"></select>
+
+      <!-- デッキインポート（デッキビルダーの「エクスポート」で出力したJSONを読み込む） -->
+      <div id="deck-import-panel">
+        <div class="settings-label">📥 デッキをインポート</div>
+        <div class="settings-row">
+          <button id="deck-import-button">📂 ファイルを選択</button>
+          <input id="deck-import-file" type="file" accept="application/json,.json" style="display:none">
+        </div>
+        <div id="deck-import-list"></div>
+        <div id="deck-import-msg"></div>
+        <div class="settings-note">デッキビルダーの「エクスポート」で出力したJSONファイルを読み込むと、上のデッキ選択欄に追加されます。</div>
+      </div>
+
       <label for="seed-input">シード値（空欄でランダム / 同じ値で同じ展開を再現）</label>
       <input id="seed-input" type="number" placeholder="例: 42">
       <div class="settings-label">CPU（自動操作するプレイヤー）</div>

@@ -1550,6 +1550,14 @@ body.dragging, body.dragging * { cursor: grabbing !important; }
 #setup-ai-buttons button.active::after { content: '：CPU'; font-weight: 700; opacity: 1; }
 #setup-ai-buttons button:hover { filter: brightness(1.12); }
 
+/* ===== デッキインポートパネル（デッキ選択画面） ===== */
+#deck-import-panel { margin-top: 18px; padding-top: 16px; border-top: 1px solid #3a3f77; }
+#deck-import-list { max-height: 160px; overflow-y: auto; margin: 6px 0; }
+#deck-import-panel .replay-del { margin-top: 0; width: auto; padding: 5px 10px; font-size: 0.82em; border-radius: 6px; background: #5a2740; }
+#deck-import-panel .settings-row { margin-top: 0; }
+#deck-import-panel .settings-row button { margin-top: 0; width: auto; flex: 1; padding: 9px; font-size: 0.95em; background: #2a2e5a; }
+#deck-import-msg { color: #8fd; font-size: 0.8em; min-height: 1.2em; margin-top: 6px; }
+
 /* ===== リプレイ観戦パネル（デッキ選択画面） ===== */
 #replay-panel { margin-top: 22px; padding-top: 16px; border-top: 1px solid #3a3f77; }
 #replay-list { max-height: 220px; overflow-y: auto; margin: 6px 0; }

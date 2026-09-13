@@ -82,6 +82,14 @@ function buildChangedAndStore(stamps) {
 
 // ============ デッキ選択画面 ============
 
+/** デッキビルダーでエクスポートしたJSONを取り込んだデッキ({名前: {id:枚数}})を読み書きする。 */
+function loadImportedDecks() {
+  try { return JSON.parse(localStorage.getItem('bsv2_importedDecks') || '{}'); } catch { return {}; }
+}
+function saveImportedDecks(decks) {
+  localStorage.setItem('bsv2_importedDecks', JSON.stringify(decks));
+}
+
 async function loadDeckSources() {
   const sources = [];
   // test_deck/ の実在デッキを manifest.json（ディレクトリから生成）から取得。失敗時はフォールバック。
@@ -102,12 +110,15 @@ async function loadDeckSources() {
       sources.push({ label: `保存デッキ: ${name}`, key: `saved:${name}` });
     }
   } catch { /* localStorage 不正は無視 */ }
+  for (const name of Object.keys(loadImportedDecks())) {
+    sources.push({ label: `インポート: ${name}`, key: `imported:${name}` });
+  }
   return sources;
 }
 
 async function resolveDeckMap(key) {
   const i = key.indexOf(':');
-  const kind = i >= 0 ? key.slice(0, i) : null; // 'test' / 'saved' / null(接頭辞なし)
+  const kind = i >= 0 ? key.slice(0, i) : null; // 'test' / 'saved' / 'imported' / null(接頭辞なし)
   const name = i >= 0 ? key.slice(i + 1) : key;
   // 接頭辞 test: または接頭辞なし（リプレイの素のデッキ名等）→ まずテストデッキを試す。
   if (kind === 'test' || kind === null) {
@@ -116,20 +127,27 @@ async function resolveDeckMap(key) {
     if (kind === 'test') throw new Error(`テストデッキの読み込みに失敗: ${name}`);
     // 接頭辞なしはテストに無ければ保存デッキへフォールバック
   }
+  if (kind === 'imported') {
+    const imported = loadImportedDecks();
+    if (!imported[name]) throw new Error(`インポートしたデッキが見つかりません: ${name}`);
+    return imported[name];
+  }
   const saved = JSON.parse(localStorage.getItem('deckData') || '{}');
   if (!saved[name]) throw new Error(`デッキが見つかりません: ${name}`);
   return saved[name];
 }
 
-async function initSetupScreen() {
+/** デッキ選択プルダウンの選択肢を（再）構築する。preserveSelection=true なら現在の選択値を維持しようとする。 */
+async function populateDeckSelects(preserveSelection = false) {
   const sources = await loadDeckSources();
   const settings = getSettings();
   const lastKey = { 'deck-p1': settings.lastDeckP1, 'deck-p2': settings.lastDeckP2 };
   for (const id of ['deck-p1', 'deck-p2']) {
     const select = document.getElementById(id);
+    const currentValue = preserveSelection ? select.value : null;
     select.innerHTML = '';
-    // 前回使用したデッキが（今も候補に）あればそれを初期選択。無ければ「選択してください」を促す
-    const last = lastKey[id];
+    // 現在の選択値 > 前回使用したデッキ、の順で（今も候補に）あればそれを初期選択。無ければ「選択してください」を促す
+    const last = currentValue || lastKey[id];
     const hasLast = last && sources.some((s) => s.key === last);
     if (!hasLast) {
       const ph = document.createElement('option');
@@ -147,6 +165,72 @@ async function initSetupScreen() {
       select.appendChild(opt);
     }
   }
+  return sources;
+}
+
+/** インポート済みデッキの一覧（削除ボタン付き）を描画する。 */
+function renderImportedDeckList() {
+  const box = document.getElementById('deck-import-list');
+  if (!box) return;
+  const imported = loadImportedDecks();
+  const names = Object.keys(imported);
+  box.innerHTML = '';
+  for (const name of names) {
+    const row = document.createElement('div');
+    row.className = 'replay-row';
+    const label = document.createElement('span');
+    label.className = 'replay-label';
+    label.textContent = `📥 ${name}`;
+    const del = document.createElement('button');
+    del.className = 'replay-del';
+    del.textContent = '🗑';
+    del.title = '削除';
+    del.addEventListener('click', async () => {
+      const current = loadImportedDecks();
+      delete current[name];
+      saveImportedDecks(current);
+      await populateDeckSelects(true);
+      renderImportedDeckList();
+    });
+    row.appendChild(label);
+    row.appendChild(del);
+    box.appendChild(row);
+  }
+}
+
+/** デッキインポートUI（ファイル選択ボタン・一覧）を一度だけ配線する。 */
+function setupDeckImportUI() {
+  const msg = (t) => { const m = document.getElementById('deck-import-msg'); if (m) { m.textContent = t; setTimeout(() => { if (m.textContent === t) m.textContent = ''; }, 3000); } };
+  const fileInput = document.getElementById('deck-import-file');
+  document.getElementById('deck-import-button')?.addEventListener('click', () => fileInput?.click());
+  fileInput?.addEventListener('change', async () => {
+    const f = fileInput.files?.[0];
+    if (!f) return;
+    try {
+      const text = await f.text();
+      const map = CardLibrary.normalizeDeckMap(JSON.parse(text));
+      if (!map || Object.keys(map).length === 0) throw new Error('デッキデータが空です');
+      const name = f.name.replace(/\.json$/i, '').trim() || 'インポートデッキ';
+      const imported = loadImportedDecks();
+      imported[name] = map;
+      saveImportedDecks(imported);
+      await populateDeckSelects(true);
+      renderImportedDeckList();
+      // プレイヤー1が未選択なら、今インポートしたデッキを自動選択する
+      const sel1 = document.getElementById('deck-p1');
+      const key = `imported:${name}`;
+      if (!sel1.value && [...sel1.options].some((o) => o.value === key)) sel1.value = key;
+      msg(`デッキ「${name}」をインポートしました`);
+    } catch (e) {
+      msg('インポート失敗: ' + e.message);
+    }
+    fileInput.value = '';
+  });
+  renderImportedDeckList();
+}
+
+async function initSetupScreen() {
+  await populateDeckSelects();
   document.getElementById('start-button').addEventListener('click', startGame);
 
   // デッキ選択画面のCPU設定（設定パネルと同じ settings.aiPlayers を読み書き＝自動的に同期）
@@ -2240,6 +2324,7 @@ async function main() {
   });
   setupSettingsPanel();
   setupMobileControls();
+  setupDeckImportUI();
   setupReplayUI();
   renderReplayList();
   setupOnlineUI();
